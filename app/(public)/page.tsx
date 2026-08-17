@@ -24,24 +24,33 @@ import {
 } from 'lucide-react';
 
 const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
+
+interface Album {
+  id: string;
+  title: string;
+  cover_url?: string;
+  coverUrl?: string;
+  photo_count?: number;
+  event_date?: string;
+  date?: string;
+  location?: string;
+}
 
 export default function PublicHomePage() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState('bib');
-  const [bibNumber, setBibNumber] = useState('');
+  const [activeTab, setActiveTab] = useState<'bib' | 'selfie'>('bib');
+  const [bibNumber, setBibNumber] = useState<string>('');
 
-  // State untuk data album dari Supabase
-  const [featuredAlbums, setFeaturedAlbums] = useState([]);
-  const [loadingAlbums, setLoadingAlbums] = useState(true);
+  const [featuredAlbums, setFeaturedAlbums] = useState<Album[]>([]);
+  const [loadingAlbums, setLoadingAlbums] = useState<boolean>(true);
 
-  // State untuk borang Contact Us
-  const [contactName, setContactName] = useState('');
-  const [contactRef, setContactRef] = useState('');
-  const [contactPhone, setContactPhone] = useState('');
-  const [contactMessage, setContactMessage] = useState('');
+  const [contactName, setContactName] = useState<string>('');
+  const [contactRef, setContactRef] = useState<string>('');
+  const [contactPhone, setContactPhone] = useState<string>('');
+  const [contactMessage, setContactMessage] = useState<string>('');
 
   useEffect(() => {
     async function fetchPublishedAlbums() {
@@ -54,10 +63,12 @@ export default function PublicHomePage() {
 
         if (error) throw error;
         if (data) {
-          setFeaturedAlbums(data);
+          setFeaturedAlbums(data as Album[]);
         }
-      } catch (err) {
-        console.error('Error fetching published albums:', err.message);
+      } catch (err: unknown) {
+        if (err instanceof Error) {
+          console.error('Error fetching published albums:', err.message);
+        }
       } finally {
         setLoadingAlbums(false);
       }
@@ -66,13 +77,13 @@ export default function PublicHomePage() {
     fetchPublishedAlbums();
   }, []);
 
-  const handleBibSearch = (e) => {
+  const handleBibSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (!bibNumber.trim()) return;
     router.push(`/album/maraton-kuching-2026?bib=${encodeURIComponent(bibNumber.trim())}`);
   };
 
-  const handleWhatsAppSubmit = (e) => {
+  const handleWhatsAppSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const adminWhatsAppNumber = '60168625143'; 
 
