@@ -25,14 +25,12 @@ export default function EditAlbumPage({ params }) {
   const [defaultPrice, setDefaultPrice] = useState('20.00');
   const [status, setStatus] = useState('Published');
 
-  // State untuk Senarai Harga Bundle (Pakej)
   const [bundles, setBundles] = useState([
     { qty: 1, price: 20 },
     { qty: 3, price: 55 },
     { qty: 5, price: 85 }
   ]);
 
-  // Load data asal album dari Supabase mengikut params.id
   useEffect(() => {
     async function fetchAlbumData() {
       try {
@@ -58,7 +56,7 @@ export default function EditAlbumPage({ params }) {
           }
         }
       } catch (err) {
-        console.error('Ralat memuatkan data album:', err.message);
+        console.error('Error loading album data:', err.message);
       } finally {
         setLoading(false);
       }
@@ -78,18 +76,15 @@ export default function EditAlbumPage({ params }) {
     setSlug(generatedSlug);
   };
 
-  // Fungsi tambah baris bundle baru
   const handleAddBundle = () => {
     setBundles([...bundles, { qty: '', price: '' }]);
   };
 
-  // Fungsi padam baris bundle
   const handleRemoveBundle = (index) => {
     const newBundles = bundles.filter((_, i) => i !== index);
     setBundles(newBundles);
   };
 
-  // Fungsi ubah nilai bundle
   const handleBundleChange = (index, field, value) => {
     const newBundles = [...bundles];
     newBundles[index][field] = value;
@@ -118,18 +113,18 @@ export default function EditAlbumPage({ params }) {
 
       if (error) throw error;
 
-      alert('Maklumat album berjaya dikemaskini!');
+      alert('Album updated successfully!');
       router.push('/admin/albums');
       router.refresh();
     } catch (err) {
-      alert('Gagal mengemaskini album: ' + err.message);
+      alert('Failed to update album: ' + err.message);
     } finally {
       setSaving(false);
     }
   };
 
   if (loading) {
-    return <div className="text-center py-20 text-zinc-400 text-sm">Memuatkan maklumat album...</div>;
+    return <div className="text-center py-20 text-zinc-400 text-sm">Loading album details...</div>;
   }
 
   return (
@@ -137,7 +132,7 @@ export default function EditAlbumPage({ params }) {
       {/* Header */}
       <div>
         <Link href="/admin/albums" className="text-xs text-zinc-400 hover:text-white flex items-center gap-1 mb-2">
-          <ArrowLeft className="w-3.5 h-3.5" /> Kembali ke Senarai Album
+          <ArrowLeft className="w-3.5 h-3.5" /> Back to Albums List
         </Link>
         <p className="text-xs font-bold text-amber-500 uppercase tracking-wider">EDIT ALBUM #{params.id}</p>
         <h1 className="text-2xl font-bold text-white mt-1">Edit Event Album</h1>
@@ -237,7 +232,7 @@ export default function EditAlbumPage({ params }) {
 
           <div>
             <label className="block text-xs font-bold text-zinc-300 uppercase mb-1.5 flex items-center gap-1">
-              <DollarSign className="w-3.5 h-3.5" /> DEFAULT PHOTO PRICE (RM - Seunit)
+              <DollarSign className="w-3.5 h-3.5" /> DEFAULT PHOTO PRICE (RM - Per Unit)
             </label>
             <input
               type="number"
@@ -248,18 +243,18 @@ export default function EditAlbumPage({ params }) {
             />
           </div>
 
-          {/* Bahagian Tetapan Harga Bundle */}
+          {/* Bundle Pricing */}
           <div className="space-y-3 pt-2 border-t border-zinc-800">
             <div className="flex items-center justify-between">
               <label className="block text-xs font-bold text-zinc-300 uppercase flex items-center gap-1">
-                <Layers className="w-3.5 h-3.5 text-amber-500" /> HARGA BUNDLE / PAKEJ GAMBAR
+                <Layers className="w-3.5 h-3.5 text-amber-500" /> BUNDLE / PACKAGE PRICING
               </label>
               <button
                 type="button"
                 onClick={handleAddBundle}
                 className="text-xs bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 font-semibold px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1"
               >
-                <Plus className="w-3.5 h-3.5" /> Tambah Pakej
+                <Plus className="w-3.5 h-3.5" /> Add Package
               </button>
             </div>
 
@@ -267,21 +262,21 @@ export default function EditAlbumPage({ params }) {
               {bundles.map((bundle, index) => (
                 <div key={index} className="flex items-center gap-3 bg-zinc-800/40 p-3 rounded-xl border border-zinc-800">
                   <div className="flex-1">
-                    <span className="text-[10px] text-zinc-400 block mb-1 uppercase font-semibold">Jumlah Gambar</span>
+                    <span className="text-[10px] text-zinc-400 block mb-1 uppercase font-semibold">Quantity (Photos)</span>
                     <input
                       type="number"
-                      placeholder="Cth: 3"
+                      placeholder="Ex: 3"
                       value={bundle.qty}
                       onChange={(e) => handleBundleChange(index, 'qty', e.target.value)}
                       className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500"
                     />
                   </div>
                   <div className="flex-1">
-                    <span className="text-[10px] text-zinc-400 block mb-1 uppercase font-semibold">Harga Pakej (RM)</span>
+                    <span className="text-[10px] text-zinc-400 block mb-1 uppercase font-semibold">Package Price (RM)</span>
                     <input
                       type="number"
                       step="0.01"
-                      placeholder="Cth: 55"
+                      placeholder="Ex: 55"
                       value={bundle.price}
                       onChange={(e) => handleBundleChange(index, 'price', e.target.value)}
                       className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500"
@@ -291,7 +286,7 @@ export default function EditAlbumPage({ params }) {
                     type="button"
                     onClick={() => handleRemoveBundle(index)}
                     className="mt-5 text-zinc-500 hover:text-red-400 p-2 transition-colors"
-                    title="Padam pakej"
+                    title="Remove package"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
@@ -327,7 +322,7 @@ export default function EditAlbumPage({ params }) {
             className="flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-black font-semibold px-6 py-3 rounded-xl transition-colors text-sm disabled:opacity-50"
           >
             <Save className="w-4 h-4" />
-            <span>{saving ? 'Menyimpan...' : 'Save Changes'}</span>
+            <span>{saving ? 'Saving...' : 'Save Changes'}</span>
           </button>
         </div>
       </form>
