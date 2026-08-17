@@ -153,9 +153,12 @@ function GalleryContent({ albumId }: { albumId: string }) {
     totalPrice = totalSelectedCount > 0 ? calculatedSum : 0;
   }
 
-  const handleCheckout = () => {
-    // Hantar ID foto melalui URL parameter supaya page checkout boleh baca terus
-    const photosParam = encodeURIComponent(JSON.stringify(selectedPhotos));
+ const handleCheckout = () => {
+    // Cari objek gambar yang dipilih berdasarkan ID
+    const selectedItems = photos.filter(p => selectedPhotos.includes(p.id));
+    
+    // Encode maklumat penuh gambar untuk dihantar terus ke URL
+    const photosParam = encodeURIComponent(JSON.stringify(selectedItems));
     window.location.href = `/checkout?album=${albumId}&total=${totalPrice}&photos=${photosParam}`;
   };
 
