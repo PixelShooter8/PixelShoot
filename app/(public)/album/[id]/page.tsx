@@ -154,10 +154,9 @@ function GalleryContent({ albumId }: { albumId: string }) {
   }
 
   const handleCheckout = () => {
-    sessionStorage.setItem('checkout_photos', JSON.stringify(selectedPhotos));
-    sessionStorage.setItem('checkout_total', totalPrice.toString());
-    sessionStorage.setItem('checkout_album_id', albumId);
-    window.location.href = `/checkout?album=${albumId}&total=${totalPrice}`;
+    // Hantar ID foto melalui URL parameter supaya page checkout boleh baca terus
+    const photosParam = encodeURIComponent(JSON.stringify(selectedPhotos));
+    window.location.href = `/checkout?album=${albumId}&total=${totalPrice}&photos=${photosParam}`;
   };
 
   return (
@@ -177,7 +176,7 @@ function GalleryContent({ albumId }: { albumId: string }) {
             <button 
               disabled={selectedPhotos.length === 0}
               onClick={handleCheckout}
-              className="bg-amber-500 hover:bg-amber-400 disabled:bg-zinc-800 disabled:text-zinc-600 disabled:cursor-not-allowed text-black font-extrabold px-5 py-2.5 rounded-xl text-xs transition flex items-center gap-2"
+              className="bg-amber-500 hover:bg-amber-400 disabled:bg-zinc-800 disabled:text-zinc-600 disabled:cursor-not-allowed text-black font-extrabold px-5 py-2.5 rounded-xl text-xs transition flex items-center gap-2 cursor-pointer"
             >
               <ShoppingBag className="w-4 h-4" />
               <span>Checkout</span>
@@ -244,7 +243,6 @@ function GalleryContent({ albumId }: { albumId: string }) {
                       <p className="text-white/40 text-xl font-black uppercase tracking-widest -rotate-45">WATERMARK</p>
                     </div>
                     
-                    {/* Kotak tanda √ di penjuru kanan atas */}
                     <div className={`absolute top-3 right-3 w-7 h-7 rounded-lg flex items-center justify-center transition ${
                       isSelected ? 'bg-amber-500 text-black' : 'bg-black/60 border border-white/20 text-transparent'
                     }`}>
@@ -256,7 +254,6 @@ function GalleryContent({ albumId }: { albumId: string }) {
                     </span>
                   </div>
 
-                  {/* Bahagian bawah kad: Harga & Status Selected */}
                   <div className="p-3 bg-zinc-950 flex items-center justify-between border-t border-zinc-900">
                     <span className="text-xs font-extrabold text-white">RM {photo.price}.00</span>
                     <span className={`text-[10px] font-bold uppercase ${isSelected ? 'text-amber-500' : 'text-zinc-500'}`}>
