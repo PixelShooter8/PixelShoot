@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { createClient } from '@supabase/supabase-js';
-import { Plus, Folder } from 'lucide-react';
+import { Plus, Folder, Calendar, MapPin, Edit3 } from 'lucide-react';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -57,11 +57,40 @@ export default function AlbumsPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {albums.map((album) => (
-            <div key={album.id} className="bg-zinc-900 border border-zinc-800 rounded-2xl p-5 space-y-2">
-              <h2 className="text-lg font-bold text-white">{album.title}</h2>
-              <p className="text-xs text-zinc-400">Slug: /album/{album.slug}</p>
-              <p className="text-sm text-zinc-300">{album.description || 'Tiada penerangan'}</p>
-            </div>
+            <Link
+              key={album.id}
+              href={`/admin/albums/${album.id}/edit`}
+              className="bg-zinc-900 hover:bg-zinc-800/80 border border-zinc-800 hover:border-amber-500/50 rounded-2xl p-5 space-y-3 transition-all block group"
+            >
+              <div className="flex items-start justify-between">
+                <div>
+                  <h2 className="text-lg font-bold text-white group-hover:text-amber-400 transition-colors">
+                    {album.title}
+                  </h2>
+                  <p className="text-xs text-zinc-400 mt-0.5">Slug: /album/{album.slug}</p>
+                </div>
+                <span className="bg-zinc-800 group-hover:bg-amber-500 group-hover:text-black text-zinc-300 p-2 rounded-xl text-xs transition-colors">
+                  <Edit3 className="w-4 h-4" />
+                </span>
+              </div>
+
+              <p className="text-sm text-zinc-300 line-clamp-2">
+                {album.description || 'Tiada penerangan'}
+              </p>
+
+              <div className="flex items-center gap-4 text-xs text-zinc-400 pt-2 border-t border-zinc-800/80">
+                {album.event_date && (
+                  <span className="flex items-center gap-1">
+                    <Calendar className="w-3.5 h-3.5 text-zinc-500" /> {album.event_date}
+                  </span>
+                )}
+                {album.location && (
+                  <span className="flex items-center gap-1">
+                    <MapPin className="w-3.5 h-3.5 text-zinc-500" /> {album.location}
+                  </span>
+                )}
+              </div>
+            </Link>
           ))}
         </div>
       )}
