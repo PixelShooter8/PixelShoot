@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
-import { ArrowLeft, Plus, Calendar, MapPin, DollarSign, Tag, Bell } from 'lucide-react';
+import { ArrowLeft, Plus, Calendar, MapPin, DollarSign, Layers, Bell, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 
 const supabase = createClient(
@@ -15,20 +15,25 @@ export default function NewAlbumPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
-  // State untuk semua medan borang
   const [formData, setFormData] = useState({
     title: '',
     slug: '',
     description: '',
     event_date: '',
+    end_date: '',
     location: '',
     price: '',
-    bundle_price: '',
     status: 'Published',
     notify_photographer: true,
   });
 
-  // Fungsi automatik tukar Tajuk jadi Slug (cth: "Majlis Kahwin" -> "majlis-kahwin")
+  // State untuk Senarai Harga Bundle (Pakej)
+  const [bundles, setBundles] = useState([
+    { qty: 1, price: 16 },
+    { qty: 3, price: 40 },
+    { qty: 5, price: 85 }
+  ]);
+
   const handleTitleChange = (e) => {
     const val = e.target.value;
     const generatedSlug = val
@@ -51,6 +56,21 @@ export default function NewAlbumPage() {
     });
   };
 
+  const handleAddBundle = () => {
+    setBundles([...bundles, { qty: '', price: '' }]);
+  };
+
+  const handleRemoveBundle = (index) => {
+    const newBundles = bundles.filter((_, i) => i !== index);
+    setBundles(newBundles);
+  };
+
+  const handleBundleChange = (index, field, value) => {
+    const newBundles = [...bundles];
+    newBundles[index][field] = value;
+    setBundles(newBundles);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -62,11 +82,12 @@ export default function NewAlbumPage() {
           slug: formData.slug,
           description: formData.description,
           event_date: formData.event_date,
+          end_date: formData.end_date,
           location: formData.location,
           price: formData.price ? parseFloat(formData.price) : 0,
-          bundle_price: formData.bundle_price ? parseFloat(formData.bundle_price) : 0,
           status: formData.status,
           notify_photographer: formData.notify_photographer,
+          pricing_bundles: bundles,
         },
       ]);
 
@@ -139,55 +160,103 @@ export default function NewAlbumPage() {
               name="event_date"
               value={formData.event_date}
               onChange={handleChange}
-              className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500 transition-colors"
+              className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500 transition-colors [color-scheme:dark]"
             />
           </div>
 
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-zinc-300 flex items-center gap-1">
-              <MapPin className="w-3.5 h-3.5 text-amber-500" /> TEMPAT / LOKASI
+              <Calendar className="w-3.5 h-3.5 text-amber-500" /> END DATE
             </label>
             <input
-              type="text"
-              name="location"
-              value={formData.location}
+              type="date"
+              name="end_date"
+              value={formData.end_date}
               onChange={handleChange}
-              placeholder="Cth: Dewan Seri Melaka"
-              className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500 transition-colors"
+              className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500 transition-colors [color-scheme:dark]"
             />
           </div>
         </div>
 
-        {/* Harga Jualan & Harga Bundle */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="space-y-1.5">
+        <div className="space-y-1.5">
+          <label className="text-xs font-semibold text-zinc-300 flex items-center gap-1">
+            <MapPin className="w-3.5 h-3.5 text-amber-500" /> TEMPAT / LOKASI
+          </label>
+          <input
+            type="text"
+            name="location"
+            value={formData.location}
+            onChange={handleChange}
+            placeholder="Cth: Dewan Seri Melaka"
+            className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500 transition-colors"
+          />
+        </div>
+
+        {/* Harga Seunit */}
+        <div className="space-y-1.5">
+          <label className="text-xs font-semibold text-zinc-300 flex items-center gap-1">
+            <DollarSign className="w-3.5 h-3.5 text-amber-500" /> HARGA SEUNIT (RM)
+          </label>
+          <input
+            type="number"
+            step="0.01"
+            name="price"
+            value={formData.price}
+            onChange={handleChange}
+            placeholder="0.00"
+            className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500 transition-colors"
+          />
+        </div>
+
+        {/* Bahagian Tetapan Harga Bundle */}
+        <div className="space-y-3 pt-3 border-t border-zinc-800">
+          <div className="flex items-center justify-between">
             <label className="text-xs font-semibold text-zinc-300 flex items-center gap-1">
-              <DollarSign className="w-3.5 h-3.5 text-amber-500" /> HARGA SEUNIT (RM)
+              <Layers className="w-3.5 h-3.5 text-amber-500" /> BUNDLE / PACKAGE PRICING
             </label>
-            <input
-              type="number"
-              step="0.01"
-              name="price"
-              value={formData.price}
-              onChange={handleChange}
-              placeholder="0.00"
-              className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500 transition-colors"
-            />
+            <button
+              type="button"
+              onClick={handleAddBundle}
+              className="text-xs bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 font-semibold px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1"
+            >
+              <Plus className="w-3.5 h-3.5" /> Tambah Pakej
+            </button>
           </div>
 
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-zinc-300 flex items-center gap-1">
-              <Tag className="w-3.5 h-3.5 text-amber-500" /> HARGA BUNDLE / PAKEJ (RM)
-            </label>
-            <input
-              type="number"
-              step="0.01"
-              name="bundle_price"
-              value={formData.bundle_price}
-              onChange={handleChange}
-              placeholder="0.00"
-              className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500 transition-colors"
-            />
+          <div className="space-y-2">
+            {bundles.map((bundle, index) => (
+              <div key={index} className="flex items-center gap-3 bg-zinc-950 p-3 rounded-xl border border-zinc-800">
+                <div className="flex-1">
+                  <span className="text-[10px] text-zinc-400 block mb-1 uppercase font-semibold">Quantity (Photos)</span>
+                  <input
+                    type="number"
+                    placeholder="Cth: 3"
+                    value={bundle.qty}
+                    onChange={(e) => handleBundleChange(index, 'qty', e.target.value)}
+                    className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+                <div className="flex-1">
+                  <span className="text-[10px] text-zinc-400 block mb-1 uppercase font-semibold">Package Price (RM)</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    placeholder="Cth: 40"
+                    value={bundle.price}
+                    onChange={(e) => handleBundleChange(index, 'price', e.target.value)}
+                    className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleRemoveBundle(index)}
+                  className="mt-5 text-zinc-500 hover:text-red-400 p-2 transition-colors"
+                  title="Padam pakej"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
           </div>
         </div>
 
