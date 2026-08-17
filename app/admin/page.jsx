@@ -17,35 +17,7 @@ import {
 
 export default function AdminDashboardPage() {
   // State untuk senarai Recent Albums
-  const [albums, setAlbums] = useState([
-    {
-      id: '1',
-      title: 'Sarawak Marathon 2026',
-      slug: 'sarawak-marathon-2026',
-      date: '09 Julai 2026',
-      location: 'Kuching, Sarawak',
-      photosCount: 240,
-      status: 'Published',
-    },
-    {
-      id: '2',
-      title: 'Kuching Night Run 2026',
-      slug: 'kuching-night-run-2026',
-      date: '15 Ogos 2026',
-      location: 'Kuching, Sarawak',
-      photosCount: 0,
-      status: 'Draft',
-    },
-    {
-      id: '3',
-      title: 'Borneo Cycling Challenge',
-      slug: 'borneo-cycling-challenge',
-      date: '02 September 2026',
-      location: 'Miri, Sarawak',
-      photosCount: 0,
-      status: 'Draft',
-    },
-  ]);
+  const [albums, setAlbums] = useState([]);
 
   // Fungsi Padam Album
   const handleDeleteAlbum = (id, title) => {
