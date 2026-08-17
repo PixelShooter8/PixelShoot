@@ -33,7 +33,7 @@ export default function PublicHomePage() {
   const [contactPhone, setContactPhone] = useState('');
   const [contactMessage, setContactMessage] = useState('');
 
-  const featuredAlbums = [  ];
+  const featuredAlbums: any[] = [];
 
   const handleBibSearch = (e: React.FormEvent) => {
     e.preventDefault();
