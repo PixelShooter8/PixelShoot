@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { createClient } from '@supabase/supabase-js';
 import { 
   Folder, 
   Calendar, 
@@ -10,20 +11,51 @@ import {
   Trash2, 
   Plus, 
   TrendingUp, 
-  ShoppingBag, 
-  Users, 
-  HardDrive 
+  Users 
 } from 'lucide-react';
 
-export default function AdminDashboardPage() {
-  // State untuk senarai Recent Albums
-  const [albums, setAlbums] = useState([]);
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+);
 
-  // Fungsi Padam Album
-  const handleDeleteAlbum = (id, title) => {
+export default function AdminDashboardPage() {
+  const [albums, setAlbums] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  // Ambil data dari Supabase semasa komponen dimuatkan
+  useEffect(() => {
+    async function fetchRecentAlbums() {
+      const { data, error } = await supabase
+        .from('events')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Ralat memuatkan dashboard:', error.message);
+      } else {
+        setAlbums(data || []);
+      }
+      setLoading(false);
+    }
+
+    fetchRecentAlbums();
+  }, []);
+
+  // Fungsi Padam Album dari Supabase
+  const handleDeleteAlbum = async (id, title) => {
     if (confirm(`Adakah anda pasti ingin memadam album "${title}"?`)) {
-      setAlbums(albums.filter((album) => album.id !== id));
-      alert('Album berjaya dipadam.');
+      const { error } = await supabase
+        .from('events')
+        .delete()
+        .eq('id', id);
+
+      if (error) {
+        alert('Gagal memadam album: ' + error.message);
+      } else {
+        setAlbums(albums.filter((album) => album.id !== id));
+        alert('Album berjaya dipadam.');
+      }
     }
   };
 
@@ -67,7 +99,7 @@ export default function AdminDashboardPage() {
         </Link>
       </div>
 
-      {/* 3. SEKSYEN RECENT ALBUMS (Diletakkan di bahagian bawah) */}
+      {/* 3. SEKSYEN RECENT ALBUMS */}
       <div className="bg-zinc-900/90 border border-zinc-800 rounded-2xl p-5 space-y-4">
         <div className="flex items-center justify-between border-b border-zinc-800/80 pb-3">
           <div>
@@ -83,7 +115,11 @@ export default function AdminDashboardPage() {
 
         {/* Senarai Album */}
         <div className="space-y-3">
-          {albums.length > 0 ? (
+          {loading ? (
+            <div className="text-center py-8 text-zinc-500 text-xs">
+              Memuatkan data...
+            </div>
+          ) : albums.length > 0 ? (
             albums.map((album) => (
               <div
                 key={album.id}
@@ -97,27 +133,25 @@ export default function AdminDashboardPage() {
                     </h3>
                     <span
                       className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full ${
-                        album.status === 'Published'
+                        (album.status || 'Published') === 'Published'
                           ? 'bg-emerald-950/80 text-emerald-400 border border-emerald-800/60'
                           : 'bg-amber-950/80 text-amber-400 border border-amber-800/60'
                       }`}
                     >
-                      {album.status === 'Draft' ? 'Draft — Event Lambat Lagi' : 'Published'}
+                      {album.status || 'Published'}
                     </span>
                   </div>
 
                   <div className="flex flex-wrap items-center gap-3 text-xs text-zinc-400">
                     <span className="flex items-center gap-1">
                       <Calendar className="w-3.5 h-3.5 text-zinc-500" />
-                      {album.date}
+                      {album.event_date || 'Tiada tarikh'}
                     </span>
                     <span>•</span>
                     <span className="flex items-center gap-1">
                       <MapPin className="w-3.5 h-3.5 text-zinc-500" />
-                      {album.location}
+                      {album.description || 'Tiada penerangan'}
                     </span>
-                    <span>•</span>
-                    <span>{album.photosCount} Gambar</span>
                   </div>
                 </div>
 
