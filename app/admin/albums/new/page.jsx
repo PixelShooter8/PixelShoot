@@ -27,7 +27,7 @@ export default function NewAlbumPage() {
     notify_photographer: true,
   });
 
-  // State untuk Senarai Harga Bundle (Pakej)
+  // State for Bundle Pricing Packages
   const [bundles, setBundles] = useState([
     { qty: 1, price: 16 },
     { qty: 3, price: 40 },
@@ -93,11 +93,11 @@ export default function NewAlbumPage() {
 
       if (error) throw error;
 
-      alert('Album berjaya dicipta!');
+      alert('Album successfully created!');
       router.push('/admin/albums');
       router.refresh();
     } catch (err) {
-      alert('Gagal mencipta album: ' + err.message);
+      alert('Failed to create album: ' + err.message);
     } finally {
       setLoading(false);
     }
@@ -119,41 +119,41 @@ export default function NewAlbumPage() {
         </div>
       </div>
 
-      {/* Borang */}
+      {/* Form */}
       <form onSubmit={handleSubmit} className="bg-zinc-900/90 border border-zinc-800 rounded-2xl p-6 space-y-5">
-        {/* Tajuk */}
+        {/* Title */}
         <div className="space-y-1.5">
-          <label className="text-xs font-semibold text-zinc-300">TAJUK ALBUM *</label>
+          <label className="text-xs font-semibold text-zinc-300">ALBUM TITLE *</label>
           <input
             type="text"
             name="title"
             required
             value={formData.title}
             onChange={handleTitleChange}
-            placeholder="Cth: Majlis Perkahwinan Ali & Siti"
+            placeholder="e.g: Ali & Siti Wedding"
             className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500 transition-colors"
           />
         </div>
 
         {/* Slug */}
         <div className="space-y-1.5">
-          <label className="text-xs font-semibold text-zinc-300">SLUG (URL Web) *</label>
+          <label className="text-xs font-semibold text-zinc-300">URL SLUG *</label>
           <input
             type="text"
             name="slug"
             required
             value={formData.slug}
             onChange={handleChange}
-            placeholder="majlis-perkahwinan-ali-siti"
+            placeholder="ali-siti-wedding"
             className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-zinc-400 focus:outline-none focus:border-amber-500 transition-colors"
           />
         </div>
 
-        {/* Tarikh & Tempat */}
+        {/* Dates & Location */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-zinc-300 flex items-center gap-1">
-              <Calendar className="w-3.5 h-3.5 text-amber-500" /> TARIKH EVENT
+              <Calendar className="w-3.5 h-3.5 text-amber-500" /> EVENT DATE
             </label>
             <input
               type="date"
@@ -180,22 +180,22 @@ export default function NewAlbumPage() {
 
         <div className="space-y-1.5">
           <label className="text-xs font-semibold text-zinc-300 flex items-center gap-1">
-            <MapPin className="w-3.5 h-3.5 text-amber-500" /> TEMPAT / LOKASI
+            <MapPin className="w-3.5 h-3.5 text-amber-500" /> LOCATION
           </label>
           <input
             type="text"
             name="location"
             value={formData.location}
             onChange={handleChange}
-            placeholder="Cth: Dewan Seri Melaka"
+            placeholder="e.g: Grand Ballroom, Kuala Lumpur"
             className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500 transition-colors"
           />
         </div>
 
-        {/* Harga Seunit */}
+        {/* Unit Price */}
         <div className="space-y-1.5">
           <label className="text-xs font-semibold text-zinc-300 flex items-center gap-1">
-            <DollarSign className="w-3.5 h-3.5 text-amber-500" /> HARGA SEUNIT (RM)
+            <DollarSign className="w-3.5 h-3.5 text-amber-500" /> DEFAULT PHOTO PRICE (RM)
           </label>
           <input
             type="number"
@@ -208,7 +208,7 @@ export default function NewAlbumPage() {
           />
         </div>
 
-        {/* Bahagian Tetapan Harga Bundle */}
+        {/* Bundle Pricing Section */}
         <div className="space-y-3 pt-3 border-t border-zinc-800">
           <div className="flex items-center justify-between">
             <label className="text-xs font-semibold text-zinc-300 flex items-center gap-1">
@@ -219,7 +219,7 @@ export default function NewAlbumPage() {
               onClick={handleAddBundle}
               className="text-xs bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 font-semibold px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1"
             >
-              <Plus className="w-3.5 h-3.5" /> Tambah Pakej
+              <Plus className="w-3.5 h-3.5" /> Add Package
             </button>
           </div>
 
@@ -230,7 +230,7 @@ export default function NewAlbumPage() {
                   <span className="text-[10px] text-zinc-400 block mb-1 uppercase font-semibold">Quantity (Photos)</span>
                   <input
                     type="number"
-                    placeholder="Cth: 3"
+                    placeholder="e.g: 3"
                     value={bundle.qty}
                     onChange={(e) => handleBundleChange(index, 'qty', e.target.value)}
                     className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500"
@@ -241,7 +241,7 @@ export default function NewAlbumPage() {
                   <input
                     type="number"
                     step="0.01"
-                    placeholder="Cth: 40"
+                    placeholder="e.g: 40"
                     value={bundle.price}
                     onChange={(e) => handleBundleChange(index, 'price', e.target.value)}
                     className="w-full bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500"
@@ -251,7 +251,7 @@ export default function NewAlbumPage() {
                   type="button"
                   onClick={() => handleRemoveBundle(index)}
                   className="mt-5 text-zinc-500 hover:text-red-400 p-2 transition-colors"
-                  title="Padam pakej"
+                  title="Remove package"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
@@ -260,15 +260,15 @@ export default function NewAlbumPage() {
           </div>
         </div>
 
-        {/* Penerangan */}
+        {/* Description */}
         <div className="space-y-1.5">
-          <label className="text-xs font-semibold text-zinc-300">PENERANGAN</label>
+          <label className="text-xs font-semibold text-zinc-300">DESCRIPTION</label>
           <textarea
             name="description"
             rows="3"
             value={formData.description}
             onChange={handleChange}
-            placeholder="Maklumat tambahan mengenai event..."
+            placeholder="Additional information about the event..."
             className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500 transition-colors"
           />
         </div>
@@ -283,8 +283,8 @@ export default function NewAlbumPage() {
               onChange={handleChange}
               className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-amber-500 transition-colors"
             >
-              <option value="Published">Published (Aktif)</option>
-              <option value="Draft">Draft (Simpan Dulu)</option>
+              <option value="Published">Published (Active)</option>
+              <option value="Draft">Draft (Hidden)</option>
             </select>
           </div>
 
@@ -298,13 +298,13 @@ export default function NewAlbumPage() {
                 className="w-4 h-4 rounded border-zinc-800 bg-zinc-950 text-amber-500 focus:ring-amber-500"
               />
               <span className="text-xs font-medium text-zinc-300 flex items-center gap-1">
-                <Bell className="w-3.5 h-3.5 text-amber-500" /> Notify me bila gambar upload
+                <Bell className="w-3.5 h-3.5 text-amber-500" /> Notify me when photos are uploaded
               </span>
             </label>
           </div>
         </div>
 
-        {/* Butang Submit */}
+        {/* Submit Button */}
         <div className="pt-4">
           <button
             type="submit"
@@ -312,7 +312,7 @@ export default function NewAlbumPage() {
             className="w-full flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-600 text-black font-bold py-3 rounded-xl text-sm transition-colors disabled:opacity-50"
           >
             <Plus className="w-4 h-4" />
-            <span>{loading ? 'Menyiapkan Album...' : 'Simpan & Cipta Album'}</span>
+            <span>{loading ? 'Creating Album...' : 'Save & Create Album'}</span>
           </button>
         </div>
       </form>
