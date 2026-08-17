@@ -53,8 +53,8 @@ export default function AdminDashboardPage() {
             <span className="text-xs font-semibold">Orders & Revenue</span>
             <TrendingUp className="w-4 h-4" />
           </div>
-          <p className="text-2xl font-bold text-white">RM 10.00</p>
-          <p className="text-[11px] text-zinc-500 mt-1">2 Paid / 5 Pending</p>
+          <p className="text-2xl font-bold text-white">RM 0.00</p>
+          <p className="text-[11px] text-zinc-500 mt-1">0</p>
         </Link>
 
         <Link href="/admin/photographers" className="bg-zinc-900/90 border border-zinc-800 hover:border-zinc-700 p-4 rounded-2xl transition-all">
@@ -62,7 +62,7 @@ export default function AdminDashboardPage() {
             <span className="text-xs font-semibold">Photographers</span>
             <Users className="w-4 h-4" />
           </div>
-          <p className="text-2xl font-bold text-white">3</p>
+          <p className="text-2xl font-bold text-white">0</p>
           <p className="text-[11px] text-zinc-500 mt-1">Jurufoto Berdaftar</p>
         </Link>
       </div>
