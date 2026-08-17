@@ -138,7 +138,6 @@ export default function EditAlbumPage({ params }) {
         <Link href="/admin/albums" className="text-xs text-zinc-400 hover:text-white flex items-center gap-1 mb-2">
           <ArrowLeft className="w-3.5 h-3.5" /> Back to Albums List
         </Link>
-        <p className="text-xs font-bold text-amber-500 uppercase tracking-wider">EDIT ALBUM #{albumId}</p>
         <h1 className="text-2xl font-bold text-white mt-1">Edit Event Album</h1>
       </div>
 
