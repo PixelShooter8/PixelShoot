@@ -30,6 +30,7 @@ interface AlbumDetails {
   has_bundle?: boolean;
   bundle_price?: number;
   package_price?: number;
+  bundle_min_photos?: number; // Kuantiti minimum untuk layak harga bundle (cth: 3)
 }
 
 interface PhotoItem {
@@ -121,19 +122,22 @@ export default function AlbumGalleryPage({ params }: { params: Promise<{ id: str
     }
   };
 
-  // Semak sama ada pakej diaktifkan dan ambil harganya
-  const isBundleActive = album?.has_bundle === true;
-  const bundlePrice = isBundleActive ? (album?.bundle_price ?? album?.package_price ?? 0) : 0;
+  // Semak status bundle dari database
+  // Nota: Jika di database anda tiada kolum 'has_bundle' tapi ada 'bundle_price', kita boleh anggap ia aktif jika bundle_price > 0
+  const isBundleActive = album?.has_bundle === true || (album?.bundle_price !== undefined && Number(album?.bundle_price) > 0);
+  const bundlePrice = Number(album?.bundle_price ?? album?.package_price ?? 40);
+  const minPhotosForBundle = Number(album?.bundle_min_photos ?? 3); // Letak default 3 jika pilih 3 gambar
 
   // Logik pengiraan harga total
   let totalPrice = 0;
   const totalSelectedCount = selectedPhotos.length;
 
-  if (isBundleActive && bundlePrice > 0 && totalSelectedCount === photos.length && photos.length > 0) {
-    // Jika pakej aktif & pilih semua gambar, guna harga pakej
+  if (isBundleActive && totalSelectedCount >= minPhotosForBundle) {
+    // Jika pilih 3 gambar atau lebih dan bundle aktif, guna harga pakej (RM 40)
+    // Jika pilih lebih dari minimum, anda boleh kekalkan RM40 atau tambah ekstra, tapi buat masa ni ikut harga pakej tetap
     totalPrice = bundlePrice;
   } else {
-    // Jika tidak, kira ikut harga seunit gambar
+    // Jika kurang dari syarat minimum, kira ikut harga seunit
     totalPrice = selectedPhotos.reduce((sum, id) => {
       const photo = photos.find(p => p.id === id);
       return sum + (photo ? photo.price : (album?.price ?? 16));
@@ -198,10 +202,10 @@ export default function AlbumGalleryPage({ params }: { params: Promise<{ id: str
                 </span>
               )}
               
-              {/* Paparkan Harga Pakej HANYA JIKA diaktifkan (has_bundle = true) */}
-              {isBundleActive && bundlePrice > 0 && (
+              {/* Paparkan Harga Bundle jika ada nilai */}
+              {bundlePrice > 0 && (
                 <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400 font-extrabold">
-                  <Tag className="w-3 h-3" /> Bundle Price: RM {bundlePrice}.00
+                  <Tag className="w-3 h-3" /> Package (3 Photos): RM {bundlePrice}.00
                 </span>
               )}
             </div>
