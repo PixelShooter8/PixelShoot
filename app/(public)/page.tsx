@@ -33,35 +33,7 @@ export default function PublicHomePage() {
   const [contactPhone, setContactPhone] = useState('');
   const [contactMessage, setContactMessage] = useState('');
 
-  const featuredAlbums = [
-    {
-      id: 'maraton-kuching-2026',
-      title: 'Kuching Marathon 2026',
-      date: 'August 12, 2026',
-      location: 'Padang Merdeka, Kuching',
-      photoCount: '12,500+',
-      coverUrl: 'https://images.unsplash.com/photo-1452626038306-9aae5e071dd3?q=80&w=1000&auto=format&fit=crop',
-      badge: 'Latest'
-    },
-    {
-      id: 'santubong-trail-2026',
-      title: 'Santubong Trail Run 2026',
-      date: 'August 01, 2026',
-      location: 'Santubong National Park',
-      photoCount: '8,200+',
-      coverUrl: 'https://images.unsplash.com/photo-1530541930197-ff16ac917b0e?q=80&w=1000&auto=format&fit=crop',
-      badge: 'Popular'
-    },
-    {
-      id: 'sarawak-night-run-2026',
-      title: 'Sarawak Night City Run',
-      date: 'July 20, 2026',
-      location: 'Kuching Waterfront',
-      photoCount: '15,000+',
-      coverUrl: 'https://images.unsplash.com/photo-1517649763962-0c623266ddc0?q=80&w=1000&auto=format&fit=crop',
-      badge: ''
-    }
-  ];
+  const featuredAlbums = [  ];
 
   const handleBibSearch = (e: React.FormEvent) => {
     e.preventDefault();
