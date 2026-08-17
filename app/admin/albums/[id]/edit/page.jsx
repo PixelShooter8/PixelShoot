@@ -19,14 +19,14 @@ export default function EditAlbumPage({ params }) {
   // Load data asal album mengikut params.id
   useEffect(() => {
     // Simulasi data album sedia ada
-    setTitle('Miri Half Marathon 2026');
-    setSlug('miri-half-marathon-2026-by-jomrun');
-    setDescription('Acara larian marathon rasmi di Miri.');
-    setStartDate('2026-07-04');
-    setEndDate('2026-07-05');
-    setLocation('Miri, Sarawak');
-    setDefaultPrice('5.00');
-    setStatus('Published');
+    setTitle('');
+    setSlug('');
+    setDescription('');
+    setStartDate('');
+    setEndDate('');
+    setLocation('');
+    setDefaultPrice('');
+    setStatus('');
   }, [params.id]);
 
   const handleTitleChange = (e) => {

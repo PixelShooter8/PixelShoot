@@ -7,32 +7,7 @@ import Link from 'next/link';
 export default function AdminAlbumsPage() {
   const [searchTerm, setSearchTerm] = useState('');
 
-  const [albums, setAlbums] = useState([
-    {
-      id: '1',
-      title: 'Miri Half Marathon',
-      slug: '/mirihalfmarathonbyjomrun',
-      photos: 704,
-      status: 'Published',
-      coverUrl: null,
-    },
-    {
-      id: '2',
-      title: 'Test',
-      slug: '/test',
-      photos: 0,
-      status: 'Draft',
-      coverUrl: null,
-    },
-    {
-      id: '3',
-      title: 'Miri Half Marathon 2026 By JomRun',
-      slug: '/miri-half-marathon-2026-by-jomrun',
-      photos: 32,
-      status: 'Published',
-      coverUrl: 'https://images.unsplash.com/photo-1530541930197-ff16ac917b0e?w=150&auto=format&fit=crop&q=80',
-    },
-  ]);
+  const [albums, setAlbums] = useState([]);
 
   const filteredAlbums = albums.filter(
     (album) =>

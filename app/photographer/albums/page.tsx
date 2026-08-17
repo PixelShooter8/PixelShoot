@@ -153,7 +153,7 @@ export default function PhotographerAlbums() {
                   type="text" 
                   value={newTitle} 
                   onChange={(e) => setNewTitle(e.target.value)} 
-                  placeholder="e.g., Miri Half Marathon 2026"
+                  placeholder="e.g., Nama Event"
                   style={{ width: '100%', background: '#1a1a1a', border: '1px solid #333', borderRadius: '8px', padding: '12px', color: '#fff', fontSize: '14px', outline: 'none' }}
                 />
               </div>
