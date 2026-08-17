@@ -24,38 +24,7 @@ export default function AdminPhotographersPage() {
   const [inviteMessage, setInviteMessage] = useState('');
 
   // Senarai jurufoto
-  const [photographers, setPhotographers] = useState([
-    {
-      id: '1',
-      name: 'Nor Hakim Bin Abd Wahab',
-      email: 'lensagramphotog@gmail.com',
-      phone: '+60 11-2345 6789',
-      location: 'Kuching, Sarawak',
-      albumsCount: 12,
-      joinedDate: '12 Jan 2026',
-      status: 'Approved',
-    },
-    {
-      id: '2',
-      name: 'Ahmad Daniel',
-      email: 'daniel.photo@gmail.com',
-      phone: '+60 19-8765 4321',
-      location: 'Miri, Sarawak',
-      albumsCount: 4,
-      joinedDate: '01 Mac 2026',
-      status: 'Approved',
-    },
-    {
-      id: '3',
-      name: 'Mohd Syafiq',
-      email: 'syafiq.pixel@gmail.com',
-      phone: '+60 13-5551 234',
-      location: 'Sibu, Sarawak',
-      albumsCount: 0,
-      joinedDate: '05 Ogos 2026',
-      status: 'Pending',
-    },
-  ]);
+  const [photographers, setPhotographers] = useState([]);
 
   // Penapis carian
   const filteredPhotographers = photographers.filter(
