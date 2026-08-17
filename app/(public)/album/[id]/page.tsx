@@ -21,16 +21,20 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
+interface PackageTier {
+  quantity: number;
+  price: number;
+}
+
 interface AlbumDetails {
   id: string;
   title: string;
   event_date?: string;
   location?: string;
   price?: number;
-  has_bundle?: boolean;
-  bundle_price?: number;
-  package_price?: number;
-  bundle_min_photos?: number; // Kuantiti minimum untuk layak harga bundle (cth: 3)
+  packages?: PackageTier[];
+  bundle_options?: PackageTier[];
+  pricing_tiers?: PackageTier[];
 }
 
 interface PhotoItem {
@@ -122,26 +126,45 @@ export default function AlbumGalleryPage({ params }: { params: Promise<{ id: str
     }
   };
 
-  // Semak status bundle dari database
-  // Nota: Jika di database anda tiada kolum 'has_bundle' tapi ada 'bundle_price', kita boleh anggap ia aktif jika bundle_price > 0
-  const isBundleActive = album?.has_bundle === true || (album?.bundle_price !== undefined && Number(album?.bundle_price) > 0);
-  const bundlePrice = Number(album?.bundle_price ?? album?.package_price ?? 40);
-  const minPhotosForBundle = Number(album?.bundle_min_photos ?? 3); // Letak default 3 jika pilih 3 gambar
+  // Ambil senarai pakej daripada database (menyokong pelbagai nama kolum JSON)
+  const packagesList: PackageTier[] = album?.packages || album?.bundle_options || album?.pricing_tiers || [
+    { quantity: 1, price: album?.price ?? 16 },
+    { quantity: 3, price: 40 },
+    { quantity: 5, price: 85 }
+  ];
 
-  // Logik pengiraan harga total
-  let totalPrice = 0;
+  // Logik pengiraan harga berdasarkan kuantiti yang dipilih
   const totalSelectedCount = selectedPhotos.length;
+  let totalPrice = 0;
 
-  if (isBundleActive && totalSelectedCount >= minPhotosForBundle) {
-    // Jika pilih 3 gambar atau lebih dan bundle aktif, guna harga pakej (RM 40)
-    // Jika pilih lebih dari minimum, anda boleh kekalkan RM40 atau tambah ekstra, tapi buat masa ni ikut harga pakej tetap
-    totalPrice = bundlePrice;
+  // Cari jika ada pakej yang sepadan dengan jumlah gambar dipilih
+  const matchedPackage = packagesList.find(pkg => Number(pkg.quantity) === totalSelectedCount);
+
+  if (matchedPackage) {
+    // Jika jumlah gambar tepat sama dengan kuantiti pakej (cth: 3 keping = RM 40)
+    totalPrice = Number(matchedPackage.price);
   } else {
-    // Jika kurang dari syarat minimum, kira ikut harga seunit
-    totalPrice = selectedPhotos.reduce((sum, id) => {
-      const photo = photos.find(p => p.id === id);
-      return sum + (photo ? photo.price : (album?.price ?? 16));
-    }, 0);
+    // Jika tiada pakej tepat, semak pakej tertinggi terdekat atau kira asas seunit
+    // Contoh: Jika pilih 4 keping, 3 keping pertama guna pakej 3 (RM40) + 1 keping lagi harga seunit (RM16)
+    // Untuk mudah & adil, kita semak pakej yang kuantitinya paling hampir di bawah jumlah dipilih
+    const sortedPackages = [...packagesList].sort((a, b) => Number(b.quantity) - Number(a.quantity));
+    let remainingCount = totalSelectedCount;
+    let calculatedSum = 0;
+
+    for (const pkg of sortedPackages) {
+      const q = Number(pkg.quantity);
+      if (q > 1 && remainingCount >= q) {
+        const multiplier = Math.floor(remainingCount / q);
+        calculatedSum += multiplier * Number(pkg.price);
+        remainingCount %= q;
+      }
+    }
+
+    // Lebihan baki gambar dikira harga seunit
+    const singleUnitPrice = album?.price ?? 16;
+    calculatedSum += remainingCount * singleUnitPrice;
+
+    totalPrice = totalSelectedCount > 0 ? calculatedSum : 0;
   }
 
   return (
@@ -185,29 +208,24 @@ export default function AlbumGalleryPage({ params }: { params: Promise<{ id: str
               {album ? album.title : albumId.replace(/-/g, ' ')}
             </h1>
 
-            <div className="flex flex-wrap items-center gap-3 text-xs text-zinc-400 pt-1">
+            <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-400 pt-1">
               {album?.event_date && (
-                <span className="flex items-center gap-1.5">
+                <span className="flex items-center gap-1.5 mr-2">
                   <Calendar className="w-3.5 h-3.5 text-zinc-500" /> {album.event_date}
                 </span>
               )}
               {album?.location && (
-                <span className="flex items-center gap-1.5">
+                <span className="flex items-center gap-1.5 mr-2">
                   <MapPin className="w-3.5 h-3.5 text-zinc-500" /> {album.location}
                 </span>
               )}
-              {album?.price !== undefined && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-zinc-900 border border-zinc-800 text-amber-500 font-bold">
-                  <Tag className="w-3 h-3" /> Per Photo: RM {album.price}.00
-                </span>
-              )}
               
-              {/* Paparkan Harga Bundle jika ada nilai */}
-              {bundlePrice > 0 && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400 font-extrabold">
-                  <Tag className="w-3 h-3" /> Package (3 Photos): RM {bundlePrice}.00
+              {/* Paparkan senarai pakej secara dinamik */}
+              {packagesList.map((pkg, idx) => (
+                <span key={idx} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400 font-bold">
+                  <Tag className="w-3 h-3" /> {pkg.quantity} Photo{Number(pkg.quantity) > 1 ? 's' : ''}: RM {pkg.price}.00
                 </span>
-              )}
+              ))}
             </div>
           </div>
 
