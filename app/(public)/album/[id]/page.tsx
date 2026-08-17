@@ -27,9 +27,9 @@ interface AlbumDetails {
   event_date?: string;
   location?: string;
   price?: number;
+  has_bundle?: boolean;
   bundle_price?: number;
   package_price?: number;
-  all_photos_price?: number;
 }
 
 interface PhotoItem {
@@ -78,7 +78,7 @@ export default function AlbumGalleryPage({ params }: { params: Promise<{ id: str
           .select('*')
           .eq('event_id', albumId);
 
-        const singlePhotoPrice = albumData?.price ?? 15;
+        const singlePhotoPrice = albumData?.price ?? 16;
 
         if (photoError) {
           console.error('Error fetching photos:', photoError.message);
@@ -121,13 +121,24 @@ export default function AlbumGalleryPage({ params }: { params: Promise<{ id: str
     }
   };
 
-  const totalPrice = selectedPhotos.reduce((sum, id) => {
-    const photo = photos.find(p => p.id === id);
-    return sum + (photo ? photo.price : 15);
-  }, 0);
+  // Semak sama ada pakej diaktifkan dan ambil harganya
+  const isBundleActive = album?.has_bundle === true;
+  const bundlePrice = isBundleActive ? (album?.bundle_price ?? album?.package_price ?? 0) : 0;
 
-  // Semak pelbagai kemungkinan nama kolum harga bundle/package dalam database
-  const bundlePrice = album?.bundle_price ?? album?.package_price ?? album?.all_photos_price;
+  // Logik pengiraan harga total
+  let totalPrice = 0;
+  const totalSelectedCount = selectedPhotos.length;
+
+  if (isBundleActive && bundlePrice > 0 && totalSelectedCount === photos.length && photos.length > 0) {
+    // Jika pakej aktif & pilih semua gambar, guna harga pakej
+    totalPrice = bundlePrice;
+  } else {
+    // Jika tidak, kira ikut harga seunit gambar
+    totalPrice = selectedPhotos.reduce((sum, id) => {
+      const photo = photos.find(p => p.id === id);
+      return sum + (photo ? photo.price : (album?.price ?? 16));
+    }, 0);
+  }
 
   return (
     <div className="min-h-screen bg-black text-white selection:bg-amber-500 selection:text-black">
@@ -170,7 +181,6 @@ export default function AlbumGalleryPage({ params }: { params: Promise<{ id: str
               {album ? album.title : albumId.replace(/-/g, ' ')}
             </h1>
 
-            {/* Paparan Tarikh, Lokasi, Harga Per Photo & Harga Bundle/Package di Bawah Tajuk */}
             <div className="flex flex-wrap items-center gap-3 text-xs text-zinc-400 pt-1">
               {album?.event_date && (
                 <span className="flex items-center gap-1.5">
@@ -187,9 +197,11 @@ export default function AlbumGalleryPage({ params }: { params: Promise<{ id: str
                   <Tag className="w-3 h-3" /> Per Photo: RM {album.price}.00
                 </span>
               )}
-              {bundlePrice !== undefined && bundlePrice !== null && (
+              
+              {/* Paparkan Harga Pakej HANYA JIKA diaktifkan (has_bundle = true) */}
+              {isBundleActive && bundlePrice > 0 && (
                 <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400 font-extrabold">
-                  <Tag className="w-3 h-3" /> All Photos Bundle: RM {bundlePrice}.00
+                  <Tag className="w-3 h-3" /> Bundle Price: RM {bundlePrice}.00
                 </span>
               )}
             </div>
