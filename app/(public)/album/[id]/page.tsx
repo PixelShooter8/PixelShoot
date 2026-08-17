@@ -27,6 +27,9 @@ interface AlbumDetails {
   event_date?: string;
   location?: string;
   price?: number;
+  bundle_price?: number;
+  package_price?: number;
+  all_photos_price?: number;
 }
 
 interface PhotoItem {
@@ -45,7 +48,6 @@ export default function AlbumGalleryPage({ params }: { params: Promise<{ id: str
   const [searchBib, setSearchBib] = useState(bibFromUrl);
   const [selectedPhotos, setSelectedPhotos] = useState<string[]>([]);
 
-  // State untuk data dari Supabase
   const [album, setAlbum] = useState<AlbumDetails | null>(null);
   const [photos, setPhotos] = useState<PhotoItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -59,7 +61,6 @@ export default function AlbumGalleryPage({ params }: { params: Promise<{ id: str
   useEffect(() => {
     async function fetchAlbumAndPhotos() {
       try {
-        // 1. Ambil maklumat event/album berdasarkan ID
         const { data: albumData, error: albumError } = await supabase
           .from('events')
           .select('*')
@@ -72,31 +73,29 @@ export default function AlbumGalleryPage({ params }: { params: Promise<{ id: str
           setAlbum(albumData);
         }
 
-        // 2. Ambil gambar berkaitan album ini dari jadual photos
         const { data: photoData, error: photoError } = await supabase
           .from('photos')
           .select('*')
           .eq('event_id', albumId);
 
+        const singlePhotoPrice = albumData?.price ?? 15;
+
         if (photoError) {
           console.error('Error fetching photos:', photoError.message);
         } else if (photoData && photoData.length > 0) {
-          // Map data photos dari database
           const formattedPhotos = photoData.map((p: any) => ({
             id: p.id,
             bib: p.bib_number || p.bib || '0000',
-            // Ambil harga dari foto, jika tiada guna harga dari album, jika tiada guna default 15
-            price: p.price ?? albumData?.price ?? 15,
+            price: p.price ?? singlePhotoPrice,
             url: p.image_url || p.url || ''
           }));
           setPhotos(formattedPhotos);
         } else {
-          // Fallback dummy data jika tiada gambar dalam DB lagi untuk testing view
           setPhotos([
-            { id: 'p1', bib: '8821', price: albumData?.price ?? 15, url: 'https://images.unsplash.com/photo-1452626038306-9aae5e071dd3?q=80&w=800' },
-            { id: 'p2', bib: '8821', price: albumData?.price ?? 15, url: 'https://images.unsplash.com/photo-1530541930197-ff16ac917b0e?q=80&w=800' },
-            { id: 'p3', bib: '4102', price: albumData?.price ?? 15, url: 'https://images.unsplash.com/photo-1517649763962-0c623266ddc0?q=80&w=800' },
-            { id: 'p4', bib: '8821', price: albumData?.price ?? 15, url: 'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?q=80&w=800' },
+            { id: 'p1', bib: '8821', price: singlePhotoPrice, url: 'https://images.unsplash.com/photo-1452626038306-9aae5e071dd3?q=80&w=800' },
+            { id: 'p2', bib: '8821', price: singlePhotoPrice, url: 'https://images.unsplash.com/photo-1530541930197-ff16ac917b0e?q=80&w=800' },
+            { id: 'p3', bib: '4102', price: singlePhotoPrice, url: 'https://images.unsplash.com/photo-1517649763962-0c623266ddc0?q=80&w=800' },
+            { id: 'p4', bib: '8821', price: singlePhotoPrice, url: 'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?q=80&w=800' },
           ]);
         }
 
@@ -122,16 +121,17 @@ export default function AlbumGalleryPage({ params }: { params: Promise<{ id: str
     }
   };
 
-  // Kira jumlah harga berdasarkan harga semasa foto tersebut
   const totalPrice = selectedPhotos.reduce((sum, id) => {
     const photo = photos.find(p => p.id === id);
-    return sum + (photo ? photo.price : (album?.price ?? 15));
+    return sum + (photo ? photo.price : 15);
   }, 0);
+
+  // Semak pelbagai kemungkinan nama kolum harga bundle/package dalam database
+  const bundlePrice = album?.bundle_price ?? album?.package_price ?? album?.all_photos_price;
 
   return (
     <div className="min-h-screen bg-black text-white selection:bg-amber-500 selection:text-black">
       
-      {/* HEADER WITH WORKING BACK LINK */}
       <header className="sticky top-0 z-50 bg-black/80 backdrop-blur-md border-b border-zinc-900">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
           <Link 
@@ -159,7 +159,6 @@ export default function AlbumGalleryPage({ params }: { params: Promise<{ id: str
         </div>
       </header>
 
-      {/* CONTENT */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10 pb-6 border-b border-zinc-900">
           <div className="space-y-2">
@@ -167,13 +166,12 @@ export default function AlbumGalleryPage({ params }: { params: Promise<{ id: str
               <Sparkles className="w-3 h-3" /> Event Gallery
             </div>
 
-            {/* Tajuk Album Sebenar */}
             <h1 className="text-2xl sm:text-4xl font-black text-white uppercase tracking-wide">
               {album ? album.title : albumId.replace(/-/g, ' ')}
             </h1>
 
-            {/* Maklumat Tarikh, Lokasi & Harga Pakej di Bawah Tajuk */}
-            <div className="flex flex-wrap items-center gap-4 text-xs text-zinc-400 pt-1">
+            {/* Paparan Tarikh, Lokasi, Harga Per Photo & Harga Bundle/Package di Bawah Tajuk */}
+            <div className="flex flex-wrap items-center gap-3 text-xs text-zinc-400 pt-1">
               {album?.event_date && (
                 <span className="flex items-center gap-1.5">
                   <Calendar className="w-3.5 h-3.5 text-zinc-500" /> {album.event_date}
@@ -185,8 +183,13 @@ export default function AlbumGalleryPage({ params }: { params: Promise<{ id: str
                 </span>
               )}
               {album?.price !== undefined && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-zinc-900 border border-zinc-800 text-amber-500 font-bold">
-                  <Tag className="w-3 h-3" /> Price: RM {album.price}.00 / photo
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-zinc-900 border border-zinc-800 text-amber-500 font-bold">
+                  <Tag className="w-3 h-3" /> Per Photo: RM {album.price}.00
+                </span>
+              )}
+              {bundlePrice !== undefined && bundlePrice !== null && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400 font-extrabold">
+                  <Tag className="w-3 h-3" /> All Photos Bundle: RM {bundlePrice}.00
                 </span>
               )}
             </div>
@@ -204,7 +207,6 @@ export default function AlbumGalleryPage({ params }: { params: Promise<{ id: str
           </div>
         </div>
 
-        {/* GALLERY GRID */}
         {loading ? (
           <div className="text-center py-20 text-zinc-500 text-sm">Loading gallery photos...</div>
         ) : filteredPhotos.length === 0 ? (
