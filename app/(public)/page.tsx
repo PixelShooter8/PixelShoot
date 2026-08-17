@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { createClient } from '@supabase/supabase-js';
 import { 
   Search, 
   Camera, 
@@ -22,10 +23,19 @@ import {
   MessageSquare
 } from 'lucide-react';
 
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+);
+
 export default function PublicHomePage() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<'bib' | 'selfie'>('bib');
+  const [activeTab, setActiveTab] = useState('bib');
   const [bibNumber, setBibNumber] = useState('');
+
+  // State untuk data album dari Supabase
+  const [featuredAlbums, setFeaturedAlbums] = useState([]);
+  const [loadingAlbums, setLoadingAlbums] = useState(true);
 
   // State untuk borang Contact Us
   const [contactName, setContactName] = useState('');
@@ -33,18 +43,37 @@ export default function PublicHomePage() {
   const [contactPhone, setContactPhone] = useState('');
   const [contactMessage, setContactMessage] = useState('');
 
-  const featuredAlbums: any[] = [];
+  useEffect(() => {
+    async function fetchPublishedAlbums() {
+      try {
+        const { data, error } = await supabase
+          .from('events')
+          .select('*')
+          .eq('status', 'Published')
+          .order('event_date', { ascending: false });
 
-  const handleBibSearch = (e: React.FormEvent) => {
+        if (error) throw error;
+        if (data) {
+          setFeaturedAlbums(data);
+        }
+      } catch (err) {
+        console.error('Error fetching published albums:', err.message);
+      } finally {
+        setLoadingAlbums(false);
+      }
+    }
+
+    fetchPublishedAlbums();
+  }, []);
+
+  const handleBibSearch = (e) => {
     e.preventDefault();
     if (!bibNumber.trim()) return;
     router.push(`/album/maraton-kuching-2026?bib=${encodeURIComponent(bibNumber.trim())}`);
   };
 
-  const handleWhatsAppSubmit = (e: React.FormEvent) => {
+  const handleWhatsAppSubmit = (e) => {
     e.preventDefault();
-    
-    // Gantikan nombor di bawah dengan nombor WhatsApp anda (Contoh: 60123456789 tanpa simbol +)
     const adminWhatsAppNumber = '60168625143'; 
 
     const text = `*CUSTOMER INQUIRY - PIXELSHOOT*%0A%0A` +
@@ -197,7 +226,6 @@ export default function PublicHomePage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {/* Step 1 */}
           <div className="bg-zinc-950 border border-zinc-900 p-6 rounded-2xl relative flex flex-col justify-between group hover:border-amber-500/50 transition">
             <div className="absolute -top-4 left-6 bg-amber-500 text-black font-black text-xs w-8 h-8 rounded-xl flex items-center justify-center shadow-lg shadow-amber-500/20">
               01
@@ -213,7 +241,6 @@ export default function PublicHomePage() {
             </div>
           </div>
 
-          {/* Step 2 */}
           <div className="bg-zinc-950 border border-zinc-900 p-6 rounded-2xl relative flex flex-col justify-between group hover:border-amber-500/50 transition">
             <div className="absolute -top-4 left-6 bg-amber-500 text-black font-black text-xs w-8 h-8 rounded-xl flex items-center justify-center shadow-lg shadow-amber-500/20">
               02
@@ -229,7 +256,6 @@ export default function PublicHomePage() {
             </div>
           </div>
 
-          {/* Step 3 */}
           <div className="bg-zinc-950 border border-zinc-900 p-6 rounded-2xl relative flex flex-col justify-between group hover:border-amber-500/50 transition">
             <div className="absolute -top-4 left-6 bg-amber-500 text-black font-black text-xs w-8 h-8 rounded-xl flex items-center justify-center shadow-lg shadow-amber-500/20">
               03
@@ -246,7 +272,6 @@ export default function PublicHomePage() {
           </div>
         </div>
 
-        {/* FAQ Section */}
         <div className="mt-12 bg-zinc-950 border border-zinc-900 rounded-2xl p-6 sm:p-8 flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="space-y-2 text-center md:text-left">
             <div className="inline-flex items-center gap-1.5 text-amber-500 text-xs font-semibold uppercase tracking-wider">
@@ -279,55 +304,58 @@ export default function PublicHomePage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {featuredAlbums.map((album) => (
-            <div 
-              key={album.id} 
-              className="bg-zinc-950 border border-zinc-900 rounded-2xl overflow-hidden hover:border-zinc-700 transition group flex flex-col justify-between"
-            >
-              <div className="relative h-48 overflow-hidden bg-zinc-900">
-                <img 
-                  src={album.coverUrl} 
-                  alt={album.title}
-                  className="w-full h-full object-cover group-hover:scale-105 transition duration-500" 
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-transparent to-transparent" />
-                {album.badge && (
-                  <span className="absolute top-3 left-3 bg-amber-500 text-black font-extrabold text-[10px] uppercase px-2.5 py-1 rounded-md">
-                    {album.badge}
+        {loadingAlbums ? (
+          <div className="text-center py-12 text-zinc-500 text-sm">Loading event albums...</div>
+        ) : featuredAlbums.length === 0 ? (
+          <div className="text-center py-12 bg-zinc-950 border border-zinc-900 rounded-2xl text-zinc-500 text-sm">
+            No published event albums available at the moment.
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {featuredAlbums.map((album) => (
+              <div 
+                key={album.id} 
+                className="bg-zinc-950 border border-zinc-900 rounded-2xl overflow-hidden hover:border-zinc-700 transition group flex flex-col justify-between"
+              >
+                <div className="relative h-48 overflow-hidden bg-zinc-900">
+                  <img 
+                    src={album.cover_url || album.coverUrl || 'https://images.unsplash.com/photo-1530549387789-4c1017266635?auto=format&fit=crop&q=80&w=800'} 
+                    alt={album.title}
+                    className="w-full h-full object-cover group-hover:scale-105 transition duration-500" 
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-transparent to-transparent" />
+                  <span className="absolute bottom-3 right-3 bg-black/80 backdrop-blur-md text-zinc-300 text-[10px] font-medium px-2.5 py-1 rounded-md border border-zinc-800 flex items-center gap-1">
+                    <ImageIcon className="w-3 h-3 text-amber-500" /> {album.photo_count || 0} Photos
                   </span>
-                )}
-                <span className="absolute bottom-3 right-3 bg-black/80 backdrop-blur-md text-zinc-300 text-[10px] font-medium px-2.5 py-1 rounded-md border border-zinc-800 flex items-center gap-1">
-                  <ImageIcon className="w-3 h-3 text-amber-500" /> {album.photoCount} Photos
-                </span>
-              </div>
-
-              <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
-                <div>
-                  <h3 className="text-lg font-bold text-white group-hover:text-amber-500 transition-colors">
-                    {album.title}
-                  </h3>
-                  <div className="flex flex-col gap-1 text-xs text-zinc-400 mt-2">
-                    <span className="flex items-center gap-1.5">
-                      <Calendar className="w-3.5 h-3.5 text-zinc-500" /> {album.date}
-                    </span>
-                    <span className="flex items-center gap-1.5 text-zinc-500">
-                      <MapPin className="w-3.5 h-3.5 text-zinc-500" /> {album.location}
-                    </span>
-                  </div>
                 </div>
 
-                <Link 
-                  href={`/album/${album.id}`}
-                  className="w-full bg-zinc-900 hover:bg-amber-500 hover:text-black text-zinc-300 font-bold text-xs py-2.5 rounded-xl border border-zinc-800 transition flex items-center justify-center gap-2"
-                >
-                  <span>View Gallery</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </Link>
+                <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
+                  <div>
+                    <h3 className="text-lg font-bold text-white group-hover:text-amber-500 transition-colors">
+                      {album.title}
+                    </h3>
+                    <div className="flex flex-col gap-1 text-xs text-zinc-400 mt-2">
+                      <span className="flex items-center gap-1.5">
+                        <Calendar className="w-3.5 h-3.5 text-zinc-500" /> {album.event_date || album.date || 'TBA'}
+                      </span>
+                      <span className="flex items-center gap-1.5 text-zinc-500">
+                        <MapPin className="w-3.5 h-3.5 text-zinc-500" /> {album.location || 'Location TBA'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <Link 
+                    href={`/album/${album.id}`}
+                    className="w-full bg-zinc-900 hover:bg-amber-500 hover:text-black text-zinc-300 font-bold text-xs py-2.5 rounded-xl border border-zinc-800 transition flex items-center justify-center gap-2"
+                  >
+                    <span>View Gallery</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </Link>
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </section>
 
       {/* CONTACT US SECTION */}
@@ -348,7 +376,6 @@ export default function PublicHomePage() {
         <div className="bg-zinc-950 border border-zinc-900 rounded-2xl p-6 sm:p-10 shadow-2xl">
           <form onSubmit={handleWhatsAppSubmit} className="space-y-6">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              {/* Nama */}
               <div className="space-y-2">
                 <label className="block text-xs font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
                   <User className="w-3.5 h-3.5 text-amber-500" /> Your Name
@@ -363,7 +390,6 @@ export default function PublicHomePage() {
                 />
               </div>
 
-              {/* No Bill / References / BIB */}
               <div className="space-y-2">
                 <label className="block text-xs font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
                   <Hash className="w-3.5 h-3.5 text-amber-500" /> Reference / BIB No.
@@ -378,7 +404,6 @@ export default function PublicHomePage() {
               </div>
             </div>
 
-            {/* No WhatsApp */}
             <div className="space-y-2">
               <label className="block text-xs font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
                 <Phone className="w-3.5 h-3.5 text-amber-500" /> WhatsApp Number
@@ -393,7 +418,6 @@ export default function PublicHomePage() {
               />
             </div>
 
-            {/* Mesej */}
             <div className="space-y-2">
               <label className="block text-xs font-semibold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
                 <MessageSquare className="w-3.5 h-3.5 text-amber-500" /> Your Message / Issue
