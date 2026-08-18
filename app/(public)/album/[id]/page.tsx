@@ -83,17 +83,9 @@ function GalleryContent({ albumId }: { albumId: string }) {
           .order('created_at', { ascending: false });
 
         if (photoData && photoData.length > 0) {
-          const publicDomain = 'https://pub-653c64f873d743fc9515ad9c6511683c.r2.dev';
-
           const formattedPhotos = photoData.map((p: any) => {
-            // Gunakan watermark_url atau original_url yang wujud dalam table anda
-            const rawUrl = p.watermark_url || p.original_url || p.image_url || p.url || '';
-            
-            let finalUrl = rawUrl;
-            if (rawUrl) {
-              const fileName = rawUrl.split('/').pop();
-              finalUrl = `${publicDomain}/${fileName}`;
-            }
+            // Gunakan terus URL penuh dari database (watermark_url atau original_url)
+            const finalUrl = p.watermark_url || p.original_url || p.image_url || p.url || '';
 
             // Tangani kolum bib_numbers (jenis array) atau bib
             let bibValue = '0000';
