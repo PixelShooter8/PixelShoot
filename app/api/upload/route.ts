@@ -55,6 +55,7 @@ export async function POST(request: Request) {
     await r2Client.send(uploadCommand);
 
     // 3. BINA PUBLIC URL MENGGUNAKAN R2_PUBLIC_URL (DIKEMASKINI)
+    // Guna R2_PUBLIC_URL jika ada, jika tidak guna fallback URL lama
     const publicDomain = process.env.R2_PUBLIC_URL || `https://${process.env.R2_BUCKET_NAME}.${process.env.CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com`;
     const imageUrl = `${publicDomain}/${fileName}`;
 
