@@ -63,42 +63,52 @@ function GalleryContent({ albumId }: { albumId: string }) {
   useEffect(() => {
     async function fetchAlbumAndPhotos() {
       try {
+        // 1. Ambil maklumat event/album
         const { data: albumData, error: albumError } = await supabase
           .from('events')
           .select('*')
           .eq('id', albumId)
           .single();
 
-        if (albumError) {
-          console.error('Error fetching album:', albumError.message);
-        } else if (albumData) {
+        if (albumData) {
           setAlbum(albumData);
         }
 
+        const singlePhotoPrice = albumData?.price ?? 16;
+
+        // 2. Ambil gambar berdasarkan event_id
         const { data: photoData, error: photoError } = await supabase
           .from('photos')
           .select('*')
-          .eq('event_id', albumId);
+          .eq('event_id', albumId)
+          .order('created_at', { ascending: false });
 
-        const singlePhotoPrice = albumData?.price ?? 16;
+        if (photoData && photoData.length > 0) {
+          const publicDomain = 'https://pub-8943b59650804e5696356dcaa834ac4d.r2.dev';
 
-        if (photoError) {
-          console.error('Error fetching photos:', photoError.message);
-        } else if (photoData && photoData.length > 0) {
-          const formattedPhotos = photoData.map((p: any) => ({
-            id: p.id,
-            bib: p.bib_number || p.bib || '0000',
-            price: p.price ?? singlePhotoPrice,
-            url: p.image_url || p.url || ''
-          }));
+          const formattedPhotos = photoData.map((p: any) => {
+            // Ambil URL mentah daripada mana-mana kolum yang ada
+            const rawUrl = p.watermark_url || p.image_url || p.url || p.original_url || '';
+            
+            // Ekstrak nama fail di hujung URL dan gabungkan dengan publicDomain R2 yang sah
+            let finalUrl = rawUrl;
+            if (rawUrl) {
+              const fileName = rawUrl.split('/').pop();
+              finalUrl = `${publicDomain}/${fileName}`;
+            }
+
+            return {
+              id: p.id,
+              bib: p.bib_number || p.bib || '0000',
+              price: p.price ?? singlePhotoPrice,
+              url: finalUrl
+            };
+          });
+
           setPhotos(formattedPhotos);
         } else {
-          setPhotos([
-            { id: 'p1', bib: '8821', price: singlePhotoPrice, url: 'https://images.unsplash.com/photo-1452626038306-9aae5e071dd3?q=80&w=800' },
-            { id: 'p2', bib: '8821', price: singlePhotoPrice, url: 'https://images.unsplash.com/photo-1530541930197-ff16ac917b0e?q=80&w=800' },
-            { id: 'p3', bib: '4102', price: singlePhotoPrice, url: 'https://images.unsplash.com/photo-1517649763962-0c623266ddc0?q=80&w=800' },
-            { id: 'p4', bib: '8821', price: singlePhotoPrice, url: 'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?q=80&w=800' },
-          ]);
+          // Jika tiada gambar dijumpai untuk event_id ini, set kosong supaya tidak memaparkan data palsu
+          setPhotos([]);
         }
       } catch (err) {
         console.error('Error loading gallery:', err);
@@ -153,11 +163,8 @@ function GalleryContent({ albumId }: { albumId: string }) {
     totalPrice = totalSelectedCount > 0 ? calculatedSum : 0;
   }
 
- const handleCheckout = () => {
-    // Cari objek gambar yang dipilih berdasarkan ID
+  const handleCheckout = () => {
     const selectedItems = photos.filter(p => selectedPhotos.includes(p.id));
-    
-    // Encode maklumat penuh gambar untuk dihantar terus ke URL
     const photosParam = encodeURIComponent(JSON.stringify(selectedItems));
     window.location.href = `/checkout?album=${albumId}&total=${totalPrice}&photos=${photosParam}`;
   };
@@ -192,7 +199,7 @@ function GalleryContent({ albumId }: { albumId: string }) {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10 pb-6 border-b border-zinc-900">
           <div className="space-y-2">
             <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-amber-500/10 text-amber-500 text-[11px] font-bold border border-amber-500/20">
-              <Sparkles className="w-3 h-3" /> Event Gallery
+              <Sparkles className="w-3 h-3" /> Event Gallery ({photos.length} Photos)
             </div>
             <h1 className="text-2xl sm:text-4xl font-black text-white uppercase tracking-wide">
               {album ? album.title : albumId.replace(/-/g, ' ')}
@@ -225,8 +232,12 @@ function GalleryContent({ albumId }: { albumId: string }) {
         ) : filteredPhotos.length === 0 ? (
           <div className="text-center py-20 bg-zinc-950 rounded-2xl border border-zinc-900">
             <Filter className="w-10 h-10 text-zinc-700 mx-auto mb-3" />
-            <p className="text-sm font-semibold text-zinc-400">No photos found for BIB "{searchBib}"</p>
-            <button onClick={() => setSearchBib('')} className="mt-4 text-xs text-amber-500 underline font-semibold">Clear filter</button>
+            <p className="text-sm font-semibold text-zinc-400">
+              {photos.length === 0 ? "No photos uploaded in this album yet." : `No photos found for BIB "${searchBib}"`}
+            </p>
+            {photos.length > 0 && (
+              <button onClick={() => setSearchBib('')} className="mt-4 text-xs text-amber-500 underline font-semibold">Clear filter</button>
+            )}
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
@@ -240,7 +251,7 @@ function GalleryContent({ albumId }: { albumId: string }) {
                     isSelected ? 'border-amber-500 ring-2 ring-amber-500/50 scale-[1.02]' : 'border-zinc-900 hover:border-zinc-700'
                   }`}
                 >
-                  <div className="relative aspect-[4/3] bg-zinc-900 overflow-hidden select-none">
+                  <div className="relative aspect-[4/3] bg-zinc-900 overflow-hidden select-none flex items-center justify-center">
                     <img src={photo.url} alt={`BIB ${photo.bib}`} className="w-full h-full object-cover pointer-events-none" />
                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-40 group-hover:opacity-60 transition-opacity">
                       <p className="text-white/40 text-xl font-black uppercase tracking-widest -rotate-45">WATERMARK</p>
