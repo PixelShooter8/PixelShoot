@@ -23,13 +23,26 @@ export default function Gallery({ eventId }: { eventId?: string }) {
     fetchImages();
   }, [eventId]);
 
+  // Fungsi untuk paksa guna domain r2.dev yang betul
+  const getSafeImageUrl = (photo: any) => {
+    const rawUrl = photo.watermark_url || photo.original_url || '';
+    if (!rawUrl) return '';
+
+    // Ambil nama fail di bahagian paling belakang URL (contoh: foto1.jpg)
+    const fileName = rawUrl.split('/').pop();
+    
+    // Domain awam Cloudflare R2 anda
+    const publicDomain = 'https://pub-8943b59650804e5696356dcaa834ac4d.r2.dev';
+    
+    return `${publicDomain}/${fileName}`;
+  };
+
   return (
     <div>
       <p className="text-sm text-gray-400 mb-4">Total Photos: {images.length}</p>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {images.map((photo) => {
-          // Pastikan kita guna watermark_url, jika tiada guna original_url
-          let imageUrl = photo.watermark_url || photo.original_url;
+          const imageUrl = getSafeImageUrl(photo);
 
           return (
             <div key={photo.id} className="border border-slate-700 rounded-xl overflow-hidden bg-slate-900 shadow-lg">
@@ -38,9 +51,6 @@ export default function Gallery({ eventId }: { eventId?: string }) {
                   src={imageUrl} 
                   alt="Event Photo" 
                   className="w-full h-full object-cover"
-                  onError={(e) => {
-                    console.error("Gagal paparkan imej:", imageUrl);
-                  }}
                 />
               </div>
               <div className="p-4 flex justify-between items-center bg-slate-900/90">
