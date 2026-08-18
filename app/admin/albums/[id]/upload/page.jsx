@@ -16,13 +16,11 @@ export default function AlbumUploadPage() {
 
   const [albumTitle, setAlbumTitle] = useState('');
   const [uploading, setUploading] = useState(false);
-  const [photos, setPhotos] = useState([]);
 
-  // Ambil nama album untuk paparan tajuk
   useEffect(() => {
     async function fetchAlbum() {
       const { data } = await supabase
-        .from('albums')
+        .from('events')
         .select('title')
         .eq('id', albumId)
         .single();
@@ -40,7 +38,6 @@ export default function AlbumUploadPage() {
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
         
-        // 1. Dapatkan presigned URL dari API server anda (untuk Cloudflare R2 / S3)
         const res = await fetch('/api/upload', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -49,14 +46,12 @@ export default function AlbumUploadPage() {
         const data = await res.json();
 
         if (data.uploadUrl) {
-          // 2. Muat naik fail terus ke Cloudflare R2
           await fetch(data.uploadUrl, {
             method: 'PUT',
             headers: { 'Content-Type': file.type },
             body: file,
           });
 
-          // 3. Simpan rekod foto ke dalam database Supabase
           await supabase.from('photos').insert({
             album_id: albumId,
             file_key: data.fileKey,
@@ -64,11 +59,11 @@ export default function AlbumUploadPage() {
           });
         }
       }
-      alert('Semua foto berjaya dimuat naik!');
+      alert('All photos uploaded successfully!');
       window.location.reload();
     } catch (err) {
       console.error(err);
-      alert('Ralat semasa memuat naik foto.');
+      alert('Error uploading photos.');
     } finally {
       setUploading(false);
     }
@@ -81,13 +76,13 @@ export default function AlbumUploadPage() {
           onClick={() => router.push('/admin/albums')}
           className="text-gray-400 hover:text-white mb-6 text-sm"
         >
-          ← Kembali ke Senarai Album
+          ← Back to Albums List
         </button>
 
         <div className="flex justify-between items-center mb-8">
-          <h1 className="text-2xl font-bold">Muat Naik Foto: {albumTitle || 'Album'}</h1>
+          <h1 className="text-2xl font-bold">Upload Photos: {albumTitle || 'Album'}</h1>
           <label className="cursor-pointer bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded-lg font-medium text-sm transition">
-            {uploading ? 'Sedang Memuat Naik...' : '+ Pilih & Muat Naik Foto'}
+            {uploading ? 'Uploading...' : '+ Select & Upload Photos'}
             <input
               type="file"
               multiple
@@ -100,8 +95,8 @@ export default function AlbumUploadPage() {
         </div>
 
         <div className="border-2 border-dashed border-gray-800 rounded-2xl p-12 text-center bg-gray-900/50">
-          <p className="text-gray-400 mb-2">Seret dan lepas fail foto di sini, atau klik butang di atas.</p>
-          <p className="text-xs text-gray-500">Menyokong fail imej (JPG, PNG)</p>
+          <p className="text-gray-400 mb-2">Drag and drop photo files here, or click the button above.</p>
+          <p className="text-xs text-gray-500">Supports image files (JPG, PNG)</p>
         </div>
       </div>
     </div>
