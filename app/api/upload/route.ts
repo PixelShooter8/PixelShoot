@@ -54,10 +54,11 @@ export async function POST(request: Request) {
 
     await r2Client.send(uploadCommand);
 
-    // URL domain awam bagi R2
-    const imageUrl = `https://${process.env.R2_BUCKET_NAME}.${process.env.CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com/${fileName}`;
+    // 3. BINA PUBLIC URL MENGGUNAKAN R2_PUBLIC_URL (DIKEMASKINI)
+    const publicDomain = process.env.R2_PUBLIC_URL || `https://${process.env.R2_BUCKET_NAME}.${process.env.CLOUDFLARE_ACCOUNT_ID}.r2.cloudflarestorage.com`;
+    const imageUrl = `${publicDomain}/${fileName}`;
 
-    // 3. HANTAR KE PYTHON AI MICROSERVICE (Auto OCR BIB & Face Vector)
+    // 4. HANTAR KE PYTHON AI MICROSERVICE (Auto OCR BIB & Face Vector)
     let detectedBibs: string[] = [];
     let faceEmbeddings: number[][] = [];
 
@@ -79,7 +80,7 @@ export async function POST(request: Request) {
       console.warn('AI Microservice offline/error, upload diteruskan tanpa AI:', aiErr);
     }
 
-    // 4. SIMPAN DATA GAMBAR KE SUPABASE
+    // 5. SIMPAN DATA GAMBAR KE SUPABASE
     const { data: photoData, error: photoError } = await supabase
       .from('photos')
       .insert({
@@ -96,7 +97,7 @@ export async function POST(request: Request) {
       throw photoError;
     }
 
-    // 5. SIMPAN VECTOR MUKA KE SUPABASE
+    // 6. SIMPAN VECTOR MUKA KE SUPABASE
     if (faceEmbeddings.length > 0 && photoData) {
       const faceRecords = faceEmbeddings.map((embedding) => ({
         photo_id: photoData.id,
