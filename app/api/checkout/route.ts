@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
-import { stripe } from '@/lib/stripe'; // Ini akan berfungsi selepas anda install stripe tadi
+import { stripe } from '@/lib/stripe';
 
 export async function POST(req: Request) {
   try {
     const { total, albumId } = await req.json();
 
-    if (!total || !albumId) {
-      return NextResponse.json({ error: 'Missing total or albumId' }, { status: 400 });
+    if (!process.env.STRIPE_SECRET_KEY) {
+      throw new Error('STRIPE_SECRET_KEY is missing in environment variables');
     }
 
     const session = await stripe.checkout.sessions.create({
@@ -26,7 +26,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ url: session.url });
   } catch (err: any) {
-    console.error('Stripe Checkout Error:', err);
-    return NextResponse.json({ error: err.message || 'Internal Server Error' }, { status: 500 });
+    console.error('Stripe Debug Error:', err.message);
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
