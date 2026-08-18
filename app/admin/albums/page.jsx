@@ -22,7 +22,7 @@ export default function AlbumsPage() {
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('Ralat memuatkan album:', error.message);
+        console.error('Error loading albums:', error.message);
       } else {
         setAlbums(data || []);
       }
@@ -48,11 +48,11 @@ export default function AlbumsPage() {
       </div>
 
       {loading ? (
-        <p className="text-zinc-500 text-sm">Memuatkan album...</p>
+        <p className="text-zinc-500 text-sm">Loading albums...</p>
       ) : albums.length === 0 ? (
         <div className="bg-zinc-900/50 border border-zinc-800 rounded-2xl p-12 text-center text-zinc-500">
           <Folder className="w-8 h-8 mx-auto mb-2 opacity-40" />
-          <p>Tiada album dijumpai.</p>
+          <p>No albums found.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -70,18 +70,18 @@ export default function AlbumsPage() {
                     <p className="text-xs text-zinc-400 mt-0.5">Slug: /album/{album.slug}</p>
                   </div>
                   
-                  {/* Bahagian Butang Tindakan (Upload & Edit) */}
+                  {/* Action Buttons (Upload & Edit) */}
                   <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
-                    {/* Butang Upload Terus ke Album */}
+                    {/* Direct Upload Button */}
                     <Link
                       href={`/admin/albums/${album.id}/upload`}
                       className="flex items-center gap-1 bg-green-600 hover:bg-green-500 text-white px-3 py-2 rounded-xl text-xs font-medium transition-colors"
-                      title="Upload Foto"
+                      title="Upload Photos"
                     >
                       <Upload className="w-3.5 h-3.5" /> Upload
                     </Link>
 
-                    {/* Butang Edit Sedia Ada */}
+                    {/* Edit Button */}
                     <Link
                       href={`/admin/albums/${album.id}/edit`}
                       className="bg-zinc-800 hover:bg-amber-500 hover:text-black text-zinc-300 p-2 rounded-xl text-xs transition-colors"
@@ -93,7 +93,7 @@ export default function AlbumsPage() {
                 </div>
 
                 <p className="text-sm text-zinc-300 line-clamp-2 mt-2">
-                  {album.description || 'Tiada penerangan'}
+                  {album.description || 'No description'}
                 </p>
               </div>
 
