@@ -4,7 +4,7 @@ import { stripe } from '@/lib/stripe';
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { total, albumId } = body;
+    const { total, albumId, photos } = body;
 
     if (!process.env.STRIPE_SECRET_KEY) {
       return NextResponse.json({ error: 'STRIPE_SECRET_KEY tiada dalam Environment Variables Vercel.' }, { status: 500 });
@@ -21,7 +21,7 @@ export async function POST(req: Request) {
         quantity: 1,
       }],
       mode: 'payment',
-      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/success`,
+      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/success?photos=` + encodeURIComponent(JSON.stringify(photos || [])),
       cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/checkout`,
     });
 
