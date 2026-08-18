@@ -3,31 +3,36 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 
-export default function Gallery() {
-  const [images, setImages] = useState<string[]>([]);
+export default function Gallery({ eventId }: { eventId?: string }) {
+  const [images, setImages] = useState<any[]>([]);
 
   useEffect(() => {
     async function fetchImages() {
-      // Dapatkan senarai fail dari bucket photo-preview
-      const { data, error } = await supabase.storage
-        .from('photo-preview')
-        .list('', { limit: 10, sortBy: { column: 'created_at', order: 'desc' } });
+      let query = supabase.from('photos').select('*').order('created_at', { ascending: false });
+      
+      // Jika ada eventId, tapis mengikut event tersebut
+      if (eventId) {
+        query = query.eq('event_id', eventId);
+      }
+
+      const { data, error } = await query;
 
       if (data) {
-        const publicUrls = data.map((file) => 
-          supabase.storage.from('photo-preview').getPublicUrl(file.name).data.publicUrl
-        );
-        setImages(publicUrls);
+        setImages(data);
       }
     }
     fetchImages();
-  }, []);
+  }, [eventId]);
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-8">
-      {images.map((url, index) => (
-        <div key={index} className="border border-slate-700 rounded-lg overflow-hidden">
-          <img src={url} alt="Watermarked" className="w-full h-auto" />
+      {images.map((photo) => (
+        <div key={photo.id} className="border border-slate-700 rounded-lg overflow-hidden bg-slate-900">
+          <img 
+            src={photo.watermark_url || photo.original_url} 
+            alt="Event Photo" 
+            className="w-full h-auto object-cover" 
+          />
         </div>
       ))}
     </div>
