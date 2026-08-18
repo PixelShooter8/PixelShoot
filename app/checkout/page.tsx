@@ -56,7 +56,7 @@ function CheckoutContent() {
     }
   }, [albumId, photosParam]);
 
-  const handleStripeCheckout = async () => {
+ const handleStripeCheckout = async () => {
     try {
       const response = await fetch('/api/checkout', {
         method: 'POST',
@@ -65,14 +65,16 @@ function CheckoutContent() {
       });
 
       const data = await response.json();
-      if (data.url) {
+      
+      if (response.ok && data.url) {
         window.location.href = data.url;
       } else {
-        alert('Ralat menyambung ke pembayaran Stripe.');
+        // Paparkan ralat sebenar daripada backend
+        alert('Ralat: ' + (data.error || 'Gagal memproses pembayaran'));
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Checkout error:', err);
-      alert('Gagal memproses pembayaran.');
+      alert('Gagal menyambung ke pelayan: ' + err.message);
     }
   };
 

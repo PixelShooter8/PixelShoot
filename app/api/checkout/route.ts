@@ -3,10 +3,11 @@ import { stripe } from '@/lib/stripe';
 
 export async function POST(req: Request) {
   try {
-    const { total, albumId } = await req.json();
+    const body = await req.json();
+    const { total, albumId } = body;
 
     if (!process.env.STRIPE_SECRET_KEY) {
-      throw new Error('STRIPE_SECRET_KEY is missing in environment variables');
+      return NextResponse.json({ error: 'STRIPE_SECRET_KEY tiada dalam Environment Variables Vercel.' }, { status: 500 });
     }
 
     const session = await stripe.checkout.sessions.create({
@@ -14,8 +15,8 @@ export async function POST(req: Request) {
       line_items: [{
         price_data: {
           currency: 'myr',
-          product_data: { name: `Photos from ${albumId}` },
-          unit_amount: Math.round(Number(total) * 100),
+          product_data: { name: `Photos from ${albumId || 'Album'}` },
+          unit_amount: Math.round(Number(total || 0) * 100),
         },
         quantity: 1,
       }],
@@ -26,7 +27,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ url: session.url });
   } catch (err: any) {
-    console.error('Stripe Debug Error:', err.message);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    console.error('Stripe Error Details:', err);
+    return NextResponse.json({ error: err.message || 'Unknown Server Error' }, { status: 500 });
   }
 }
