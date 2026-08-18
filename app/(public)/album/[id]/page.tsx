@@ -64,7 +64,7 @@ function GalleryContent({ albumId }: { albumId: string }) {
     async function fetchAlbumAndPhotos() {
       try {
         // 1. Ambil maklumat event/album
-        const { data: albumData, error: albumError } = await supabase
+        const { data: albumData } = await supabase
           .from('events')
           .select('*')
           .eq('id', albumId)
@@ -83,23 +83,37 @@ function GalleryContent({ albumId }: { albumId: string }) {
           .eq('event_id', albumId)
           .order('created_at', { ascending: false });
 
+        if (photoError) {
+          console.error('Error fetching photos:', photoError.message);
+        }
+
         if (photoData && photoData.length > 0) {
-          const publicDomain = 'https://pub-8943b59650804e5696356dcaa834ac4d.r2.dev';
+          // Domain awam Cloudflare R2 yang betul (berdasarkan panel R2 anda)
+          const publicDomain = 'https://pub-653c64f873d743fc9515ad9c6511683c.r2.dev';
 
           const formattedPhotos = photoData.map((p: any) => {
-            // Ambil URL mentah daripada mana-mana kolum yang ada
+            // Cari mana-mana kolum URL yang wujud pada table
             const rawUrl = p.watermark_url || p.image_url || p.url || p.original_url || '';
             
-            // Ekstrak nama fail di hujung URL dan gabungkan dengan publicDomain R2 yang sah
             let finalUrl = rawUrl;
             if (rawUrl) {
               const fileName = rawUrl.split('/').pop();
               finalUrl = `${publicDomain}/${fileName}`;
             }
 
+            // Selesaikan masalah BIB supaya tidak jadi 0000 jika ada data
+            let bibValue = '0000';
+            if (p.bib_number) {
+              bibValue = String(p.bib_number);
+            } else if (p.bib) {
+              bibValue = String(p.bib);
+            } else if (p.bib_numbers && Array.isArray(p.bib_numbers) && p.bib_numbers.length > 0) {
+              bibValue = p.bib_numbers.join(', ');
+            }
+
             return {
               id: p.id,
-              bib: p.bib_number || p.bib || '0000',
+              bib: bibValue,
               price: p.price ?? singlePhotoPrice,
               url: finalUrl
             };
@@ -107,7 +121,6 @@ function GalleryContent({ albumId }: { albumId: string }) {
 
           setPhotos(formattedPhotos);
         } else {
-          // Jika tiada gambar dijumpai untuk event_id ini, set kosong supaya tidak memaparkan data palsu
           setPhotos([]);
         }
       } catch (err) {
@@ -252,7 +265,11 @@ function GalleryContent({ albumId }: { albumId: string }) {
                   }`}
                 >
                   <div className="relative aspect-[4/3] bg-zinc-900 overflow-hidden select-none flex items-center justify-center">
-                    <img src={photo.url} alt={`BIB ${photo.bib}`} className="w-full h-full object-cover pointer-events-none" />
+                    <img 
+                      src={photo.url} 
+                      alt={`BIB ${photo.bib}`} 
+                      className="w-full h-full object-cover pointer-events-none" 
+                    />
                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-40 group-hover:opacity-60 transition-opacity">
                       <p className="text-white/40 text-xl font-black uppercase tracking-widest -rotate-45">WATERMARK</p>
                     </div>
