@@ -10,7 +10,6 @@ export default function Gallery({ eventId }: { eventId?: string }) {
     async function fetchImages() {
       let query = supabase.from('photos').select('*').order('created_at', { ascending: false });
       
-      // Jika ada eventId, tapis mengikut event tersebut
       if (eventId) {
         query = query.eq('event_id', eventId);
       }
@@ -25,14 +24,26 @@ export default function Gallery({ eventId }: { eventId?: string }) {
   }, [eventId]);
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-8">
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
       {images.map((photo) => (
-        <div key={photo.id} className="border border-slate-700 rounded-lg overflow-hidden bg-slate-900">
-          <img 
-            src={photo.watermark_url || photo.original_url} 
-            alt="Event Photo" 
-            className="w-full h-auto object-cover" 
-          />
+        <div key={photo.id} className="border border-slate-700 rounded-xl overflow-hidden bg-slate-900 shadow-lg">
+          <div className="relative aspect-[4/3] bg-slate-800 flex items-center justify-center">
+            <img 
+              src={photo.watermark_url || photo.original_url} 
+              alt="Event Photo" 
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                // Jika gambar gagal dimuat turun, paparkan mesej ralat pada konsol untuk semakan
+                console.error("Gagal memuatkan imej URL:", photo.watermark_url);
+              }}
+            />
+          </div>
+          <div className="p-4 flex justify-between items-center bg-slate-900/90">
+            <span className="text-xs text-amber-400 font-semibold">
+              {photo.bib_numbers?.length > 0 ? `BIB #${photo.bib_numbers.join(', ')}` : 'BIB 0000'}
+            </span>
+            <span className="text-sm font-bold text-white">RM {photo.price || '15.00'}</span>
+          </div>
         </div>
       ))}
     </div>
