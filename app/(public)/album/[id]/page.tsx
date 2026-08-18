@@ -163,11 +163,11 @@ function GalleryContent({ albumId }: { albumId: string }) {
   }
 
   const handleCheckout = () => {
-    const selectedItems = photos.filter(p => selectedPhotos.includes(p.id));
-    const photosParam = encodeURIComponent(JSON.stringify(selectedItems));
-    window.location.href = `/checkout?album=${albumId}&total=${totalPrice}&photos=${photosParam}`;
-  };
-
+  const selectedItems = photos.filter(p => selectedPhotos.includes(p.id));
+  // Pastikan ia di-stringify dengan betul
+  const photosParam = encodeURIComponent(JSON.stringify(selectedItems));
+  window.location.href = `/checkout?album=${albumId}&total=${totalPrice}&photos=${photosParam}`;
+};
   return (
     <div className="min-h-screen bg-black text-white selection:bg-amber-500 selection:text-black">
       <header className="sticky top-0 z-50 bg-black/80 backdrop-blur-md border-b border-zinc-900">
