@@ -15,55 +15,52 @@ export default function AlbumUploadPage() {
   const albumId = params.id;
 
   const [albumTitle, setAlbumTitle] = useState('');
+  const [eventSlug, setEventSlug] = useState('');
   const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     async function fetchAlbum() {
       const { data } = await supabase
         .from('events')
-        .select('title')
+        .select('title, slug')
         .eq('id', albumId)
         .single();
-      if (data) setAlbumTitle(data.title);
+      if (data) {
+        setAlbumTitle(data.title);
+        setEventSlug(data.slug);
+      }
     }
     if (albumId) fetchAlbum();
   }, [albumId]);
 
   const handleFileUpload = async (e) => {
     const files = e.target.files;
-    if (!files || files.length === 0) return;
+    if (!files || files.length === 0 || !eventSlug) return;
 
     setUploading(true);
     try {
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
         
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('eventId', eventSlug);
+
         const res = await fetch('/api/upload', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ filename: file.name, contentType: file.type, albumId }),
+          body: formData,
         });
+        
         const data = await res.json();
-
-        if (data.uploadUrl) {
-          await fetch(data.uploadUrl, {
-            method: 'PUT',
-            headers: { 'Content-Type': file.type },
-            body: file,
-          });
-
-          await supabase.from('photos').insert({
-            album_id: albumId,
-            file_key: data.fileKey,
-            name: file.name,
-          });
+        if (!res.ok) {
+          throw new Error(data.error || 'Failed to upload photo');
         }
       }
       alert('All photos uploaded successfully!');
       window.location.reload();
     } catch (err) {
       console.error(err);
-      alert('Error uploading photos.');
+      alert('Error uploading photos: ' + err.message);
     } finally {
       setUploading(false);
     }
