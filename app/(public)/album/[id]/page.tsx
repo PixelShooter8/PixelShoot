@@ -63,7 +63,6 @@ function GalleryContent({ albumId }: { albumId: string }) {
   useEffect(() => {
     async function fetchAlbumAndPhotos() {
       try {
-        // 1. Ambil maklumat event/album
         const { data: albumData } = await supabase
           .from('events')
           .select('*')
@@ -76,24 +75,19 @@ function GalleryContent({ albumId }: { albumId: string }) {
 
         const singlePhotoPrice = albumData?.price ?? 16;
 
-        // 2. Ambil gambar berdasarkan event_id
-        const { data: photoData, error: photoError } = await supabase
+        // Ambil data dari table photos
+        const { data: photoData } = await supabase
           .from('photos')
           .select('*')
           .eq('event_id', albumId)
           .order('created_at', { ascending: false });
 
-        if (photoError) {
-          console.error('Error fetching photos:', photoError.message);
-        }
-
         if (photoData && photoData.length > 0) {
-          // Domain awam Cloudflare R2 yang betul (berdasarkan panel R2 anda)
           const publicDomain = 'https://pub-653c64f873d743fc9515ad9c6511683c.r2.dev';
 
           const formattedPhotos = photoData.map((p: any) => {
-            // Cari mana-mana kolum URL yang wujud pada table
-            const rawUrl = p.watermark_url || p.image_url || p.url || p.original_url || '';
+            // Gunakan watermark_url atau original_url yang wujud dalam table anda
+            const rawUrl = p.watermark_url || p.original_url || p.image_url || p.url || '';
             
             let finalUrl = rawUrl;
             if (rawUrl) {
@@ -101,14 +95,14 @@ function GalleryContent({ albumId }: { albumId: string }) {
               finalUrl = `${publicDomain}/${fileName}`;
             }
 
-            // Selesaikan masalah BIB supaya tidak jadi 0000 jika ada data
+            // Tangani kolum bib_numbers (jenis array) atau bib
             let bibValue = '0000';
-            if (p.bib_number) {
+            if (p.bib_numbers && Array.isArray(p.bib_numbers) && p.bib_numbers.length > 0) {
+              bibValue = p.bib_numbers.join(', ');
+            } else if (p.bib_number) {
               bibValue = String(p.bib_number);
             } else if (p.bib) {
               bibValue = String(p.bib);
-            } else if (p.bib_numbers && Array.isArray(p.bib_numbers) && p.bib_numbers.length > 0) {
-              bibValue = p.bib_numbers.join(', ');
             }
 
             return {
