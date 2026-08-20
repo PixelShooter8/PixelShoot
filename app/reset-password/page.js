@@ -1,11 +1,19 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '@/utils/supabase';
 
 export default function ResetPassword() {
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        // Sesi pemulihan aktif
+      }
+    });
+  }, []);
 
   const handleReset = async (e) => {
     e.preventDefault();
@@ -19,7 +27,7 @@ export default function ResetPassword() {
     if (error) {
       setMessage('Ralat: ' + error.message);
     } else {
-      setMessage('Berjaya! Kata laluan anda telah dikemaskini. Anda boleh log masuk semula.');
+      setMessage('Berjaya! Kata laluan anda telah dikemaskini. Sila log masuk semula.');
     }
     setLoading(false);
   };
