@@ -66,6 +66,12 @@ export default function LoginPage() {
               style={{ width: '100%', padding: '10px 14px', background: '#0a0a0a', border: '1px solid #333', color: '#fff', borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box' }}
               required 
             />
+            {/* Pautan Lupa Kata Laluan */}
+            <div style={{ textAlign: 'right', marginTop: '6px' }}>
+              <Link href="/forgot-password" style={{ fontSize: '12px', color: '#888', textDecoration: 'none' }}>
+                Forgot password?
+              </Link>
+            </div>
           </div>
 
           <button 
