@@ -17,7 +17,7 @@ export default function LoginPage() {
     setError('')
     setLoading(true)
     
-    // Semak terus dengan Supabase Auth
+    // 1. Log masuk dengan Supabase Auth
     const { data, error } = await supabase.auth.signInWithPassword({
       email: email,
       password: password,
@@ -26,9 +26,22 @@ export default function LoginPage() {
     if (error) {
       setError(error.message)
       setLoading(false)
+      return
+    }
+
+    if (data.session) {
+      const userEmail = data.session.user.email
+
+      // 2. Semak jika e-mel ini adalah Admin
+      // (Gantikan 'admin@pixelshooter.my' dengan e-mel admin sebenar anda)
+      if (userEmail === 'admin@pixelshooter.my' || userEmail === 'sarawakpixelphotography@gmail.com') {
+        router.push('/admin') // Hantar ke panel admin
+      } else {
+        router.push('/photographer') // Hantar ke panel jurufoto biasa
+      }
     } else {
-      // Jika berjaya, masuk ke dashboard jurufoto
-      router.push('/photographer')
+      setError('Log masuk gagal. Sila cuba lagi.')
+      setLoading(false)
     }
   }
 
