@@ -11,7 +11,8 @@ import {
   Trash2, 
   Plus, 
   TrendingUp, 
-  Users 
+  Users,
+  Eye // <--- Tambah ikon Eye untuk preview
 } from 'lucide-react';
 
 const supabase = createClient(
@@ -155,8 +156,17 @@ export default function AdminDashboardPage() {
                   </div>
                 </div>
 
-                {/* Butang Edit & Delete */}
+                {/* Butang View, Edit & Delete */}
                 <div className="flex items-center justify-end gap-2 border-t sm:border-t-0 border-zinc-700/50 pt-3 sm:pt-0">
+                  {/* Butang Preview / View Album */}
+                  <Link
+                    href={`/admin/albums/${album.id}`}
+                    className="flex items-center gap-1.5 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-400 hover:text-amber-300 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                  >
+                    <Eye className="w-3.5 h-3.5" />
+                    <span>View</span>
+                  </Link>
+
                   <Link
                     href={`/admin/albums/${album.id}/edit`}
                     className="flex items-center gap-1.5 bg-zinc-700/60 hover:bg-zinc-700 text-zinc-200 hover:text-white px-3 py-1.5 rounded-lg text-xs font-medium transition-colors"
