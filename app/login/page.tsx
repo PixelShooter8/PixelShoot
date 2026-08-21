@@ -3,22 +3,32 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { supabase } from '@/utils/supabase'
 
 export default function LoginPage() {
   const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
+    setError('')
+    setLoading(true)
     
-    // Semakan mudah untuk demo (Anda boleh sambungkan ke backend/database sebenar nanti)
-    if (email === 'ahmad@lensstudio.com' && password === '123456') {
-      // Jika betul, arahkan terus ke dashboard jurufoto
-      router.push('/photographer')
+    // Semak terus dengan Supabase Auth
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: email,
+      password: password,
+    })
+
+    if (error) {
+      setError(error.message)
+      setLoading(false)
     } else {
-      setError('Invalid email or password. (Hint: use ahmad@lensstudio.com / 123456)')
+      // Jika berjaya, masuk ke dashboard jurufoto
+      router.push('/photographer')
     }
   }
 
@@ -77,8 +87,9 @@ export default function LoginPage() {
           <button 
             type="submit"
             style={{ width: '100%', background: '#facc15', color: '#000', border: 'none', padding: '12px', borderRadius: '8px', fontWeight: 'bold', fontSize: '14px', cursor: 'pointer', marginTop: '6px', transition: 'opacity 0.2s' }}
+            disabled={loading}
           >
-            Sign In
+            {loading ? 'Signing in...' : 'Sign In'}
           </button>
         </form>
 
