@@ -12,14 +12,17 @@ export default function ForgotPassword() {
     setLoading(true);
     setMessage('');
 
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: 'https://pixelshooter.my/reset-password',
-    });
+    // Menggunakan fungsi pemulihan tanpa redirect link automatik yang rosak akibat prefetching
+    const { error } = await supabase.auth.resetPasswordForEmail(email);
 
     if (error) {
       setMessage('Ralat: ' + error.message);
     } else {
-      setMessage('Pautan tetapan semula telah dihantar ke e-mel anda. Sila semak inbox.');
+      setMessage('E-mel pemulihan telah dihantar. Sila semak kod OTP dalam e-mel anda.');
+      // Selepas hantar, boleh arahkan ke halaman verifikasi kod
+      setTimeout(() => {
+        window.location.href = `/verify-otp?email=${encodeURIComponent(email)}`;
+      }, 2000);
     }
     setLoading(false);
   };
@@ -28,7 +31,7 @@ export default function ForgotPassword() {
     <div style={{ background: '#0a0a0a', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontFamily: 'sans-serif' }}>
       <form onSubmit={handleResetRequest} style={{ width: '100%', maxWidth: '400px', padding: '32px', background: '#121212', border: '1px solid #222', borderRadius: '12px' }}>
         <h2 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '8px', textAlign: 'center' }}>Lupa Kata Laluan</h2>
-        <p style={{ fontSize: '13px', color: '#888', marginBottom: '24px', textAlign: 'center' }}>Masukkan e-mel anda untuk menerima pautan tetapan semula.</p>
+        <p style={{ fontSize: '13px', color: '#888', marginBottom: '24px', textAlign: 'center' }}>Masukkan e-mel anda untuk menerima kod tetapan semula.</p>
         
         <div style={{ marginBottom: '16px' }}>
           <label style={{ fontSize: '12px', color: '#888', display: 'block', marginBottom: '6px' }}>Alamat E-mel</label>
@@ -47,7 +50,7 @@ export default function ForgotPassword() {
           style={{ width: '100%', background: '#facc15', color: '#000', border: 'none', padding: '12px', borderRadius: '8px', fontWeight: 'bold', fontSize: '14px', cursor: 'pointer', transition: 'opacity 0.2s' }}
           disabled={loading}
         >
-          {loading ? 'Sedang menghantar...' : 'Hantar Pautan Pemulihan'}
+          {loading ? 'Sedang menghantar...' : 'Hantar Kod Pemulihan'}
         </button>
 
         {message && <p style={{ marginTop: '16px', fontSize: '12px', textAlign: 'center', color: message.includes('Ralat') ? '#f87171' : '#facc15' }}>{message}</p>}
