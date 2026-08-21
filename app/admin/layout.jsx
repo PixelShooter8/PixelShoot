@@ -1,13 +1,17 @@
-// app/admin/layout.jsx
-import AdminSidebar from '../../components/AdminSidebar';
+import { useEffect, useState } from 'react';
+import { supabase } from '@/utils/supabase';
 
-export default function AdminLayout({ children }) {
-  return (
-    <div className="flex min-h-screen bg-zinc-950 text-white">
-      <AdminSidebar />
-      <main className="flex-1 p-6">
-        {children}
-      </main>
-    </div>
-  );
-}
+// Di dalam komponen sidebar anda:
+const [userEmail, setUserEmail] = useState('');
+const [userName, setUserName] = useState('');
+
+useEffect(() => {
+  async function getUser() {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      setUserEmail(user.email || '');
+      setUserName(user.user_metadata?.full_name || 'Admin');
+    }
+  }
+  getUser();
+}, []);

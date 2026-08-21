@@ -1,6 +1,8 @@
 "use client";
 
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { supabase } from '@/utils/supabase';
 import { 
   LayoutDashboard, 
   Folder, 
@@ -25,9 +27,32 @@ const adminNavItems = [
 
 export default function AdminSidebar() {
   const router = useRouter();
+  const [userEmail, setUserEmail] = useState('Memuatkan...');
+  const [userName, setUserName] = useState('Admin');
+  const [userInitial, setUserInitial] = useState('A');
 
-  const handleSignOut = () => {
-    // Navigasi terus ke halaman login
+  // Auto-detect maklumat pengguna yang sedang log masuk
+  useEffect(() => {
+    async function fetchUser() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const email = user.email || '';
+        setUserEmail(email);
+        
+        // Ambil nama dari metadata atau guna bahagian depan e-mel
+        const name = user.user_metadata?.full_name || email.split('@')[0];
+        setUserName(name);
+        
+        // Ambil huruf pertama untuk avatar bulat
+        setUserInitial(name.charAt(0).toUpperCase());
+      }
+    }
+    fetchUser();
+  }, []);
+
+  // Fungsi Sign Out sebenar dengan Supabase
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
     router.push('/login');
   };
 
@@ -73,22 +98,22 @@ export default function AdminSidebar() {
           <Globe className="w-4 h-4" /> View Public Site
         </a>
 
-      {/* Butang Sign Out */}
-<a 
-  href="/login"
-  className="flex items-center gap-3 px-3 py-2 text-xs font-medium text-red-500 hover:text-red-400 w-full text-left transition-colors"
->
-  <LogOut className="w-4 h-4" /> Sign Out
-</a>
+        {/* Butang Sign Out (Ditukar kepada button interaktif) */}
+        <button 
+          onClick={handleSignOut}
+          className="flex items-center gap-3 px-3 py-2 text-xs font-medium text-red-500 hover:text-red-400 w-full text-left transition-colors cursor-pointer"
+        >
+          <LogOut className="w-4 h-4" /> Sign Out
+        </button>
         
-        {/* Kad Profil Admin */}
+        {/* Kad Profil Admin (Auto-Detect Dinamik) */}
         <div className="flex items-center gap-3 bg-zinc-900/80 p-2.5 rounded-xl mt-2 border border-zinc-800">
           <div className="w-8 h-8 rounded-full bg-amber-500 text-black font-bold text-xs flex items-center justify-center shrink-0">
-            N
+            {userInitial}
           </div>
           <div className="overflow-hidden">
-            <p className="text-xs font-semibold text-white truncate">Nor hakim Bin abd wahab</p>
-            <p className="text-[10px] text-zinc-500 truncate">lensagramphotog@gmail.com</p>
+            <p className="text-xs font-semibold text-white truncate capitalize">{userName}</p>
+            <p className="text-[10px] text-zinc-500 truncate">{userEmail}</p>
           </div>
         </div>
       </div>
