@@ -93,7 +93,8 @@ export default function AdminAlbumsPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {albums.map((album) => {
-            const albumUrl = typeof window !== 'undefined' ? `${window.location.origin}/admin/albums/${album.id}` : '';
+            // URL PUBLIC untuk dikongsi kepada pelawat/peserta
+            const publicEventUrl = typeof window !== 'undefined' ? `${window.location.origin}/events/${album.id}` : '';
             const isCopied = copiedId === album.id;
             const isPublished = album.status?.toLowerCase() === 'published' || album.is_published;
 
@@ -132,13 +133,13 @@ export default function AdminAlbumsPage() {
                     </div>
                   </div>
 
-                  {/* Kotak Pautan URL */}
+                  {/* Kotak Pautan URL (Public Link) */}
                   <div className="bg-black/40 border border-zinc-800 rounded-xl px-3 py-2 flex items-center justify-between gap-2">
                     <span className="text-[11px] text-zinc-400 truncate font-mono">
-                      {albumUrl}
+                      {publicEventUrl}
                     </span>
                     <button
-                      onClick={() => handleCopyLink(albumUrl, album.id)}
+                      onClick={() => handleCopyLink(publicEventUrl, album.id)}
                       className="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-[11px] px-2.5 py-1 rounded-lg flex items-center gap-1 transition shrink-0"
                     >
                       {isCopied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3 text-amber-500" />}
@@ -147,7 +148,7 @@ export default function AdminAlbumsPage() {
                   </div>
                 </div>
 
-                {/* Bahagian Bawah (Butang Tindakan) */}
+                {/* Bahagian Bawah (Butang Tindakan Admin) */}
                 <div className="grid grid-cols-2 gap-2 pt-2 border-t border-zinc-800/80">
                   <a
                     href={`/admin/albums/${album.id}`}
