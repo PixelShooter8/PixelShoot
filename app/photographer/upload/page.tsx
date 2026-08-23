@@ -9,8 +9,6 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 )
 
-const CURRENT_USER_ID = 'Jurufoto A' // Sesuaikan mengikut log masuk jurufoto
-
 interface UploadItem {
   id: string
   file: File
@@ -32,15 +30,28 @@ export default function PhotographerUpload() {
   const [activeTab, setActiveTab] = useState<'success' | 'failed' | 'queue'>('queue')
   const [uploads, setUploads] = useState<UploadItem[]>([])
   const [isUploading, setIsUploading] = useState(false)
+  const [sessionUser, setSessionUser] = useState<any>(null)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const MAX_FILE_SIZE_MB = 15 // Had saiz fail asal
+  const MAX_FILE_SIZE_MB = 15
   const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
 
-  // Ambil senarai album/event dari Supabase
+  // Semak sesi log masuk & ambil album
   useEffect(() => {
-    async function fetchAlbums() {
+    async function checkAuthAndFetchAlbums() {
+      // 1. Dapatkan sesi pengguna yang sedang log masuk
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+      
+      if (sessionError || !session) {
+        alert('Sesi log masuk tidak sah atau anda belum log masuk. Sila log masuk semula sebagai jurufoto.')
+        // Anda boleh arahkan ke halaman login jika perlu: window.location.href = '/login'
+        return
+      }
+
+      setSessionUser(session.user)
+
+      // 2. Ambil senarai album
       const { data, error } = await supabase
         .from('events')
         .select('id, title')
@@ -51,7 +62,7 @@ export default function PhotographerUpload() {
         setSelectedAlbum(data[0].id)
       }
     }
-    fetchAlbums()
+    checkAuthAndFetchAlbums()
   }, [])
 
   const handleFiles = (files: FileList | null) => {
@@ -82,7 +93,6 @@ export default function PhotographerUpload() {
     setUploads(uploads.filter(item => item.id !== id))
   }
 
-  // Fungsi Canvas untuk bina salinan ringan khusus untuk preview website
   const compressImageForPreview = (file: File): Promise<Blob> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader()
@@ -128,8 +138,12 @@ export default function PhotographerUpload() {
     })
   }
 
-  // Proses Muat Naik Dual-Bucket & Simpan ke Jadual 'photos'
   const startUploadProcess = async () => {
+    if (!sessionUser) {
+      alert('Akses ditolak: Anda perlu log masuk sebagai jurufoto yang sah.')
+      return
+    }
+
     const queueItems = uploads.filter(item => item.status === 'queue')
     if (queueItems.length === 0) {
       alert('Tiada fail dalam baris gilir.')
@@ -178,23 +192,20 @@ export default function PhotographerUpload() {
           .from('photo-preview')
           .getPublicUrl(previewFilePath)
 
-        // 3. Simpan maklumat ke dalam jadual 'photos' (Sesuai dengan kolum database anda)
+        // 3. Simpan maklumat ke dalam jadual 'photos'
         const { error: dbError } = await supabase
           .from('photos')
           .insert([
             {
               event_id: selectedAlbum,
-              original_url: originalUrlData.publicUrl,  // Pautan fail besar asal
-              preview_url: previewUrlData.publicUrl,    // Pautan fail ringan untuk website
-              price: 10.00,                             // Harga default gambar (boleh ubah ikut sistem anda)
-              bib_numbers: []                           // Kosongkan dulu; fungsi AI backend anda akan scan & masukkan nombor bib kemudian
+              original_url: originalUrlData.publicUrl,
+              preview_url: previewUrlData.publicUrl,
+              price: 10.00,
+              bib_numbers: []
             }
           ])
 
-        if (dbError) {
-          console.error('Ralat simpan ke jadual photos:', dbError)
-          throw dbError
-        }
+        if (dbError) throw dbError
 
         setUploads(prev => prev.map(u => u.id === item.id ? { ...u, status: 'success', message: 'Berjaya dimuat naik!' } : u))
         successCount++
@@ -222,10 +233,9 @@ export default function PhotographerUpload() {
       <div style={{ flex: 1, padding: '40px', overflowY: 'auto' }}>
         <div style={{ marginBottom: '30px' }}>
           <h1 style={{ marginTop: 0, fontSize: '24px', fontWeight: 'bold' }}>Upload Event Photos</h1>
-          <p style={{ color: '#888', fontSize: '14px' }}>Fail asal disimpan di <b>photo-original</b>, preview ringan ke <b>photo-preview</b>, bersambung terus dengan pangkalan data photos.</p>
+          <p style={{ color: '#888', fontSize: '14px' }}>Sistem muat naik selamat dengan pengesahan sesi log masuk jurufoto.</p>
         </div>
 
-        {/* Pilihan Album */}
         <div style={{ background: '#121212', border: '1px solid #222', borderRadius: '12px', padding: '24px', maxWidth: '850px', marginBottom: '25px' }}>
           <label style={{ display: 'block', fontSize: '14px', fontWeight: 'bold', marginBottom: '10px' }}>
             Pilih Album Sasaran:
@@ -248,7 +258,6 @@ export default function PhotographerUpload() {
           </select>
         </div>
 
-        {/* Kotak Drag & Drop */}
         <div style={{ 
           background: '#121212', border: `2px dashed ${isDragging ? '#facc15' : '#333'}`, 
           borderRadius: '16px', padding: '40px 20px', textAlign: 'center', maxWidth: '850px', cursor: 'pointer', marginBottom: '20px'
@@ -282,7 +291,6 @@ export default function PhotographerUpload() {
           </div>
         )}
 
-        {/* Senarai Status Fail */}
         <div style={{ maxWidth: '850px' }}>
           <div style={{ display: 'flex', gap: '10px', borderBottom: '1px solid #222', paddingBottom: '15px', marginBottom: '20px' }}>
             <button onClick={() => setActiveTab('queue')} style={{ background: activeTab === 'queue' ? '#222' : 'transparent', color: activeTab === 'queue' ? '#facc15' : '#888', border: 'none', padding: '8px 16px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>Queue ({countQueue})</button>
