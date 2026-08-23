@@ -41,7 +41,6 @@ export default function AdminAlbumsPage() {
 
   async function fetchAlbums() {
     setLoading(true);
-    // Diubah daripada 'albums' kepada 'events' mengikut jadual Supabase anda
     const { data, error } = await supabase
       .from('events')
       .select('*')
@@ -95,7 +94,8 @@ export default function AdminAlbumsPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {albums.map((album) => {
-            const albumUrl = typeof window !== 'undefined' ? `${window.location.origin}/events/${album.slug || album.id}` : '';
+            // Ditukar daripada /events/ kepada /album/ mengikut struktur folder anda
+            const albumUrl = typeof window !== 'undefined' ? `${window.location.origin}/album/${album.id}` : '';
             const isCopied = copiedId === album.id;
             const isPublished = album.status?.toLowerCase() === 'published' || album.is_published;
 
@@ -152,7 +152,7 @@ export default function AdminAlbumsPage() {
                 {/* Bahagian Bawah (Butang Tindakan) */}
                 <div className="grid grid-cols-2 gap-2 pt-2 border-t border-zinc-800/80">
                   <a
-                    href={`/events/${album.slug || album.id}`}
+                    href={`/album/${album.id}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-semibold py-2.5 rounded-xl flex items-center justify-center gap-1.5 transition text-center"
