@@ -84,23 +84,26 @@ export default function AdminPhotographersPage() {
     await supabase.from('profiles').update({ status: 'Approved' }).eq('id', id);
   };
 
-  // Fungsi hantar jemputan emel
+  // Fungsi simpan data jemputan/pendaftaran ke dalam database profiles
   const handleSendInvite = async (e) => {
     e.preventDefault();
     if (!inviteEmail) return;
 
     try {
-      const { error } = await supabase.auth.admin.inviteUserByEmail(inviteEmail, {
-        redirectTo: `${window.location.origin}/login`,
-      });
+      // Masukkan rekod emel baru ke dalam table profiles dengan status 'Pending'
+      const { error } = await supabase
+        .from('profiles')
+        .insert([{ email: inviteEmail, status: 'Pending', role: 'photographer' }]);
 
       if (error) {
-        alert('Gagal hantar emel jemputan: ' + error.message);
+        alert('Gagal menambah jurufoto: ' + error.message);
       } else {
-        alert(`Emel jemputan rasmi telah berjaya dihantar ke: ${inviteEmail}`);
+        alert(`Jemaah/Jurufoto dengan emel ${inviteEmail} telah berjaya direkodkan! Sila minta mereka daftar masuk.`);
         setInviteEmail('');
         setInviteMessage('');
         setIsInviteOpen(false);
+        // Muat semula halaman / senarai
+        window.location.reload();
       }
     } catch (err) {
       alert('Ralat sistem: ' + err.message);
