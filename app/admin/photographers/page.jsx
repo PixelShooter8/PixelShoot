@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { createClient } from '@supabase/supabase-js';
 import { 
   Users, 
   Search, 
@@ -15,6 +16,11 @@ import {
   Send
 } from 'lucide-react';
 
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+);
+
 export default function AdminPhotographersPage() {
   const [searchTerm, setSearchTerm] = useState('');
   
@@ -25,36 +31,80 @@ export default function AdminPhotographersPage() {
 
   // Senarai jurufoto
   const [photographers, setPhotographers] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  // Tarik senarai jurufoto dari database Supabase
+  useEffect(() => {
+    async function fetchPhotographers() {
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('*');
+
+        if (error) {
+          console.error('Error fetching photographers:', error.message);
+        } else if (data) {
+          const formatted = data.map((item) => ({
+            id: item.id,
+            name: item.name || item.full_name || 'Tanpa Nama',
+            email: item.email || '',
+            phone: item.phone || '-',
+            location: item.location || 'Sarawak',
+            status: item.status || 'Approved',
+            albumsCount: item.albums_count || 0,
+            joinedDate: item.created_at ? new Date(item.created_at).toLocaleDateString() : 'Terkini'
+          }));
+          setPhotographers(formatted);
+        }
+      } catch (err) {
+        console.error('Unexpected error:', err);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchPhotographers();
+  }, []);
 
   // Penapis carian
   const filteredPhotographers = photographers.filter(
     (p) =>
       p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       p.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.phone.includes(searchTerm) ||
-      p.location.toLowerCase().includes(searchTerm.toLowerCase())
+      (p.phone && p.phone.includes(searchTerm)) ||
+      (p.location && p.location.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
-  const handleApprove = (id) => {
+  const handleApprove = async (id) => {
     setPhotographers(
       photographers.map((p) =>
         p.id === id ? { ...p, status: 'Approved' } : p
       )
     );
+    await supabase.from('profiles').update({ status: 'Approved' }).eq('id', id);
   };
 
   // Fungsi hantar jemputan emel
-  const handleSendInvite = (e) => {
+  const handleSendInvite = async (e) => {
     e.preventDefault();
     if (!inviteEmail) return;
 
-    // Logik hantar emel (Backend/API call boleh disambung di sini)
-    alert(`Jemputan akses jurufoto telah dihantar ke emel: ${inviteEmail}`);
-    
-    // Reset state & tutup modal
-    setInviteEmail('');
-    setInviteMessage('');
-    setIsInviteOpen(false);
+    try {
+      const { error } = await supabase.auth.admin.inviteUserByEmail(inviteEmail, {
+        redirectTo: `${window.location.origin}/login`,
+      });
+
+      if (error) {
+        alert('Gagal hantar emel jemputan: ' + error.message);
+      } else {
+        alert(`Emel jemputan rasmi telah berjaya dihantar ke: ${inviteEmail}`);
+        setInviteEmail('');
+        setInviteMessage('');
+        setIsInviteOpen(false);
+      }
+    } catch (err) {
+      alert('Ralat sistem: ' + err.message);
+    }
   };
 
   return (
@@ -115,7 +165,9 @@ export default function AdminPhotographersPage() {
 
       {/* Senarai Jurufoto */}
       <div className="space-y-3">
-        {filteredPhotographers.length > 0 ? (
+        {loading ? (
+          <div className="text-center py-10 text-zinc-500 text-sm">Memuatkan senarai jurufoto...</div>
+        ) : filteredPhotographers.length > 0 ? (
           filteredPhotographers.map((photographer) => (
             <div
               key={photographer.id}
