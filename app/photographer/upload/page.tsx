@@ -1,9 +1,14 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
+import { createClient } from '@supabase/supabase-js'
 import Sidebar from '@/components/Sidebar'
 
-// Simulasi user yang sedang login (Tukar kepada ID sebenar dari Supabase nanti)
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+)
+
 const CURRENT_USER_ID = 'user_A'
 
 interface UploadItem {
@@ -13,11 +18,17 @@ interface UploadItem {
   size: string
   status: 'success' | 'failed' | 'queue'
   message: string
-  photographerId: string // <--- TAMBAHAN 1: Tanda nama pemilik gambar
+  photographerId: string
+}
+
+interface AlbumItem {
+  id: string;
+  title: string;
 }
 
 export default function PhotographerUpload() {
-  const [selectedAlbum, setSelectedAlbum] = useState('1')
+  const [albums, setAlbums] = useState<AlbumItem[]>([])
+  const [selectedAlbum, setSelectedAlbum] = useState('')
   const [isDragging, setIsDragging] = useState(false)
   const [activeTab, setActiveTab] = useState<'success' | 'failed' | 'queue'>('queue')
   const [uploads, setUploads] = useState<UploadItem[]>([])
@@ -27,6 +38,28 @@ export default function PhotographerUpload() {
 
   const MAX_FILE_SIZE_MB = 8
   const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
+
+  // Ambil senarai album sebenar dari Supabase (Jadual events)
+  useEffect(() => {
+    async function fetchAlbums() {
+      const { data, error } = await supabase
+        .from('events')
+        .select('id, title')
+        .order('created_at', { ascending: false })
+
+      if (error) {
+        console.error('Ralat memuatkan album:', error)
+      } else if (data && data.length > 0) {
+        setAlbums(data)
+        setSelectedAlbum(data[0].id) // Tetapkan pilihan pertama sebagai default
+      } else {
+        setAlbums([])
+        setSelectedAlbum('')
+      }
+    }
+
+    fetchAlbums()
+  }, [])
 
   const handleFiles = (files: FileList | null) => {
     if (!files) return
@@ -45,7 +78,7 @@ export default function PhotographerUpload() {
         size: sizeMb,
         status: isFailed ? 'failed' : 'queue',
         message: isFailed ? `Exceeds ${MAX_FILE_SIZE_MB}MB limit` : 'Ready to upload',
-        photographerId: CURRENT_USER_ID // <--- TAMBAHAN 2: Automatik cop ID jurufoto yang sedang login
+        photographerId: CURRENT_USER_ID
       })
     }
 
@@ -53,12 +86,10 @@ export default function PhotographerUpload() {
     setActiveTab('queue')
   }
 
-  // Fungsi untuk memadam gambar (Hanya muncul jika milik user yang login)
   const handleDelete = (id: string) => {
     setUploads(uploads.filter(item => item.id !== id))
   }
 
-  // Fungsi apabila jurufoto tekan butang "Start Upload"
   const startUploadProcess = () => {
     const queueItems = uploads.filter(item => item.status === 'queue')
     if (queueItems.length === 0) {
@@ -66,9 +97,13 @@ export default function PhotographerUpload() {
       return
     }
 
+    if (!selectedAlbum) {
+      alert('Sila pilih album sasaran terlebih dahulu.')
+      return
+    }
+
     setIsUploading(true)
 
-    // Simulasi proses muat naik ke album yang dipilih
     setTimeout(() => {
       setUploads(prev => prev.map(item => {
         if (item.status === 'queue') {
@@ -78,7 +113,7 @@ export default function PhotographerUpload() {
       }))
       setIsUploading(false)
       setActiveTab('success')
-      alert(`Successfully uploaded photos to Album ID: ${selectedAlbum}!`)
+      alert(`Successfully uploaded photos to selected album!`)
     }, 1500)
   }
 
@@ -100,7 +135,7 @@ export default function PhotographerUpload() {
           <p style={{ color: '#888', fontSize: '14px' }}>Upload participant photos (Max 8MB per file) to the selected event album.</p>
         </div>
 
-        {/* Pilihan Album */}
+        {/* Pilihan Album Dinamik dari Supabase */}
         <div style={{ background: '#121212', border: '1px solid #222', borderRadius: '12px', padding: '24px', maxWidth: '850px', marginBottom: '25px' }}>
           <label style={{ display: 'block', fontSize: '14px', fontWeight: 'bold', marginBottom: '10px' }}>
             Select Target Event Album:
@@ -120,9 +155,15 @@ export default function PhotographerUpload() {
               cursor: 'pointer'
             }}
           >
-            <option value="1">Sarawak Marathon 2026</option>
-            <option value="2">Kuching Night Run 2026</option>
-            <option value="3">Borneo Cycling Challenge</option>
+            {albums.length === 0 ? (
+              <option value="">Tiada album aktif ditemui (Sila buat album di Admin)</option>
+            ) : (
+              albums.map((album) => (
+                <option key={album.id} value={album.id}>
+                  {album.title}
+                </option>
+              ))
+            )}
           </select>
         </div>
 
@@ -169,7 +210,6 @@ export default function PhotographerUpload() {
           </button>
         </div>
 
-        {/* UTAMA: Butang Tekan Untuk Mula Upload */}
         {countQueue > 0 && (
           <div style={{ maxWidth: '850px', marginBottom: '25px', display: 'flex', justifyContent: 'flex-end' }}>
             <button 
@@ -300,7 +340,6 @@ export default function PhotographerUpload() {
                         {item.size}
                       </div>
 
-                      {/* <--- TAMBAHAN 3: Butang Delete Selamat (Hanya muncul untuk pemilik gambar) */}
                       {item.photographerId === CURRENT_USER_ID && (
                         <button 
                           onClick={() => handleDelete(item.id)}
