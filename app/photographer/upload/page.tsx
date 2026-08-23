@@ -9,7 +9,7 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 )
 
-const CURRENT_USER_ID = 'user_A'
+const CURRENT_USER_ID = 'Jurufoto A' // Sesuaikan mengikut log masuk jurufoto
 
 interface UploadItem {
   id: string
@@ -18,7 +18,6 @@ interface UploadItem {
   size: string
   status: 'success' | 'failed' | 'queue'
   message: string
-  photographerId: string
 }
 
 interface AlbumItem {
@@ -36,10 +35,10 @@ export default function PhotographerUpload() {
 
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const MAX_FILE_SIZE_MB = 8
+  const MAX_FILE_SIZE_MB = 15 // Had saiz fail asal
   const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
 
-  // Ambil senarai album sebenar dari Supabase (Jadual events)
+  // Ambil senarai album/event dari Supabase
   useEffect(() => {
     async function fetchAlbums() {
       const { data, error } = await supabase
@@ -47,17 +46,11 @@ export default function PhotographerUpload() {
         .select('id, title')
         .order('created_at', { ascending: false })
 
-      if (error) {
-        console.error('Ralat memuatkan album:', error)
-      } else if (data && data.length > 0) {
+      if (!error && data && data.length > 0) {
         setAlbums(data)
-        setSelectedAlbum(data[0].id) // Tetapkan pilihan pertama sebagai default
-      } else {
-        setAlbums([])
-        setSelectedAlbum('')
+        setSelectedAlbum(data[0].id)
       }
     }
-
     fetchAlbums()
   }, [])
 
@@ -77,8 +70,7 @@ export default function PhotographerUpload() {
         name: file.name,
         size: sizeMb,
         status: isFailed ? 'failed' : 'queue',
-        message: isFailed ? `Exceeds ${MAX_FILE_SIZE_MB}MB limit` : 'Ready to upload',
-        photographerId: CURRENT_USER_ID
+        message: isFailed ? `Melebihi had ${MAX_FILE_SIZE_MB}MB` : 'Sedia untuk dimuat naik'
       })
     }
 
@@ -90,10 +82,57 @@ export default function PhotographerUpload() {
     setUploads(uploads.filter(item => item.id !== id))
   }
 
-  const startUploadProcess = () => {
+  // Fungsi Canvas untuk bina salinan ringan khusus untuk preview website
+  const compressImageForPreview = (file: File): Promise<Blob> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.readAsDataURL(file)
+      reader.onload = (event) => {
+        const img = new Image()
+        img.src = event.target?.result as string
+        img.onload = () => {
+          const canvas = document.createElement('canvas')
+          const MAX_WIDTH = 1200
+          const MAX_HEIGHT = 1200
+          let width = img.width
+          let height = img.height
+
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height *= MAX_WIDTH / width
+              width = MAX_WIDTH
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width *= MAX_HEIGHT / height
+              height = MAX_HEIGHT
+            }
+          }
+
+          canvas.width = width
+          canvas.height = height
+          const ctx = canvas.getContext('2d')
+          ctx?.drawImage(img, 0, 0, width, height)
+
+          canvas.toBlob((blob) => {
+            if (blob) {
+              resolve(blob)
+            } else {
+              reject(new Error('Gagal memproses preview'))
+            }
+          }, 'image/jpeg', 0.7)
+        }
+        img.onerror = (error) => reject(error)
+      }
+      reader.onerror = (error) => reject(error)
+    })
+  }
+
+  // Proses Muat Naik Dual-Bucket & Simpan ke Jadual 'photos'
+  const startUploadProcess = async () => {
     const queueItems = uploads.filter(item => item.status === 'queue')
     if (queueItems.length === 0) {
-      alert('No files in queue to upload.')
+      alert('Tiada fail dalam baris gilir.')
       return
     }
 
@@ -103,65 +142,107 @@ export default function PhotographerUpload() {
     }
 
     setIsUploading(true)
+    let successCount = 0
 
-    setTimeout(() => {
-      setUploads(prev => prev.map(item => {
-        if (item.status === 'queue') {
-          return { ...item, status: 'success', message: 'Uploaded successfully' }
+    for (const item of queueItems) {
+      try {
+        const fileExt = item.file.name.split('.').pop()
+        const uniqueName = `${Date.now()}_${Math.random().toString(36).substring(2, 7)}`
+        
+        const originalFilePath = `${selectedAlbum}/${uniqueName}.${fileExt}`
+        const previewFilePath = `${selectedAlbum}/${uniqueName}_preview.jpg`
+
+        // 1. Muat naik fail asal ke bucket 'photo-original'
+        const { error: originalError } = await supabase.storage
+          .from('photo-original')
+          .upload(originalFilePath, item.file)
+
+        if (originalError) throw originalError
+
+        const { data: originalUrlData } = supabase.storage
+          .from('photo-original')
+          .getPublicUrl(originalFilePath)
+
+        // 2. Jana & muat naik fail ringan ke bucket 'photo-preview'
+        const compressedBlob = await compressImageForPreview(item.file)
+        const { error: previewError } = await supabase.storage
+          .from('photo-preview')
+          .upload(previewFilePath, compressedBlob, {
+            contentType: 'image/jpeg',
+            upsert: true
+          })
+
+        if (previewError) throw previewError
+
+        const { data: previewUrlData } = supabase.storage
+          .from('photo-preview')
+          .getPublicUrl(previewFilePath)
+
+        // 3. Simpan maklumat ke dalam jadual 'photos' (Sesuai dengan kolum database anda)
+        const { error: dbError } = await supabase
+          .from('photos')
+          .insert([
+            {
+              event_id: selectedAlbum,
+              original_url: originalUrlData.publicUrl,  // Pautan fail besar asal
+              preview_url: previewUrlData.publicUrl,    // Pautan fail ringan untuk website
+              price: 10.00,                             // Harga default gambar (boleh ubah ikut sistem anda)
+              bib_numbers: []                           // Kosongkan dulu; fungsi AI backend anda akan scan & masukkan nombor bib kemudian
+            }
+          ])
+
+        if (dbError) {
+          console.error('Ralat simpan ke jadual photos:', dbError)
+          throw dbError
         }
-        return item
-      }))
-      setIsUploading(false)
-      setActiveTab('success')
-      alert(`Successfully uploaded photos to selected album!`)
-    }, 1500)
+
+        setUploads(prev => prev.map(u => u.id === item.id ? { ...u, status: 'success', message: 'Berjaya dimuat naik!' } : u))
+        successCount++
+
+      } catch (err: any) {
+        console.error('Ralat proses upload:', err)
+        setUploads(prev => prev.map(u => u.id === item.id ? { ...u, status: 'failed', message: err.message || 'Gagal' } : u))
+      }
+    }
+
+    setIsUploading(false)
+    setActiveTab('success')
+    alert(`Berjaya memuat naik ${successCount} gambar ke album!`)
   }
 
   const countSuccess = uploads.filter(item => item.status === 'success').length
   const countFailed = uploads.filter(item => item.status === 'failed').length
   const countQueue = uploads.filter(item => item.status === 'queue').length
-
   const filteredUploads = uploads.filter(item => item.status === activeTab)
 
   return (
     <div style={{ background: '#0a0a0a', minHeight: '100vh', display: 'flex', color: '#fff', fontFamily: 'sans-serif' }}>
-      
       <Sidebar activeTab="upload" />
 
       <div style={{ flex: 1, padding: '40px', overflowY: 'auto' }}>
-        
         <div style={{ marginBottom: '30px' }}>
           <h1 style={{ marginTop: 0, fontSize: '24px', fontWeight: 'bold' }}>Upload Event Photos</h1>
-          <p style={{ color: '#888', fontSize: '14px' }}>Upload participant photos (Max 8MB per file) to the selected event album.</p>
+          <p style={{ color: '#888', fontSize: '14px' }}>Fail asal disimpan di <b>photo-original</b>, preview ringan ke <b>photo-preview</b>, bersambung terus dengan pangkalan data photos.</p>
         </div>
 
-        {/* Pilihan Album Dinamik dari Supabase */}
+        {/* Pilihan Album */}
         <div style={{ background: '#121212', border: '1px solid #222', borderRadius: '12px', padding: '24px', maxWidth: '850px', marginBottom: '25px' }}>
           <label style={{ display: 'block', fontSize: '14px', fontWeight: 'bold', marginBottom: '10px' }}>
-            Select Target Event Album:
+            Pilih Album Sasaran:
           </label>
           <select 
             value={selectedAlbum}
             onChange={(e) => setSelectedAlbum(e.target.value)}
             style={{
-              width: '100%',
-              background: '#1a1a1a',
-              border: '1px solid #333',
-              borderRadius: '8px',
-              padding: '12px 16px',
-              color: '#fff',
-              fontSize: '14px',
-              outline: 'none',
-              cursor: 'pointer'
+              width: '100%', background: '#1a1a1a', border: '1px solid #333', borderRadius: '8px',
+              padding: '12px 16px', color: '#fff', fontSize: '14px', outline: 'none', cursor: 'pointer'
             }}
           >
             {albums.length === 0 ? (
-              <option value="">Tiada album aktif ditemui (Sila buat album di Admin)</option>
+              <option value="">Tiada album ditemui</option>
             ) : (
               albums.map((album) => (
-                <option key={album.id} value={album.id}>
-                  {album.title}
-                </option>
+                <option key={album.id} value={album.id}>{album.title}</option>
               ))
             )}
           </select>
@@ -169,44 +250,20 @@ export default function PhotographerUpload() {
 
         {/* Kotak Drag & Drop */}
         <div style={{ 
-          background: '#121212', 
-          border: `2px dashed ${isDragging ? '#facc15' : '#333'}`, 
-          borderRadius: '16px', 
-          padding: '40px 20px', 
-          textAlign: 'center',
-          maxWidth: '850px',
-          cursor: 'pointer',
-          marginBottom: '20px',
-          transition: 'all 0.2s ease'
+          background: '#121212', border: `2px dashed ${isDragging ? '#facc15' : '#333'}`, 
+          borderRadius: '16px', padding: '40px 20px', textAlign: 'center', maxWidth: '850px', cursor: 'pointer', marginBottom: '20px'
         }}
         onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
         onDragLeave={() => setIsDragging(false)}
         onDrop={(e) => { e.preventDefault(); setIsDragging(false); handleFiles(e.dataTransfer.files); }}
         onClick={() => fileInputRef.current?.click()}
         >
-          <input 
-            ref={fileInputRef}
-            type="file" 
-            onChange={(e) => handleFiles(e.target.files)}
-            style={{ display: 'none' }}
-            multiple
-            accept="image/jpeg,image/png"
-          />
+          <input ref={fileInputRef} type="file" onChange={(e) => handleFiles(e.target.files)} style={{ display: 'none' }} multiple accept="image/jpeg,image/png" />
           <div style={{ fontSize: '32px', marginBottom: '10px' }}>📤</div>
-          <h3 style={{ fontSize: '16px', fontWeight: 'bold', margin: '0 0 6px 0' }}>Drag & Drop your photos here</h3>
-          <p style={{ color: '#888', fontSize: '13px', margin: '0 0 15px 0' }}>Max file size: 8MB. (Supports JPG, PNG)</p>
-          
-          <button style={{
-            background: '#facc15',
-            color: '#000',
-            border: 'none',
-            padding: '8px 20px',
-            borderRadius: '6px',
-            fontWeight: 'bold',
-            fontSize: '13px',
-            cursor: 'pointer'
-          }}>
-            Browse Files
+          <h3 style={{ fontSize: '16px', fontWeight: 'bold', margin: '0 0 6px 0' }}>Seret & Lepas gambar anda di sini</h3>
+          <p style={{ color: '#888', fontSize: '13px', margin: '0 0 15px 0' }}>Sokong JPG, PNG (Sehingga 15MB)</p>
+          <button style={{ background: '#facc15', color: '#000', border: 'none', padding: '8px 20px', borderRadius: '6px', fontWeight: 'bold', fontSize: '13px', cursor: 'pointer' }}>
+            Pilih Fail
           </button>
         </div>
 
@@ -216,155 +273,39 @@ export default function PhotographerUpload() {
               onClick={startUploadProcess}
               disabled={isUploading}
               style={{
-                background: '#4ade80',
-                color: '#000',
-                border: 'none',
-                padding: '12px 28px',
-                borderRadius: '8px',
-                fontWeight: 'bold',
-                fontSize: '14px',
-                cursor: 'pointer',
-                boxShadow: '0 4px 12px rgba(74, 222, 128, 0.3)',
-                transition: 'opacity 0.2s'
+                background: '#4ade80', color: '#000', border: 'none', padding: '12px 28px',
+                borderRadius: '8px', fontWeight: 'bold', fontSize: '14px', cursor: 'pointer'
               }}
             >
-              {isUploading ? 'Uploading to Album...' : `🚀 Start Upload (${countQueue} files)`}
+              {isUploading ? 'Sedang Memproses & Muat Naik...' : `🚀 Mula Muat Naik (${countQueue} fail)`}
             </button>
           </div>
         )}
 
-        {/* Panel Status (Tabs) */}
+        {/* Senarai Status Fail */}
         <div style={{ maxWidth: '850px' }}>
           <div style={{ display: 'flex', gap: '10px', borderBottom: '1px solid #222', paddingBottom: '15px', marginBottom: '20px' }}>
-            
-            <button
-              onClick={() => setActiveTab('queue')}
-              style={{
-                background: activeTab === 'queue' ? '#222' : 'transparent',
-                color: activeTab === 'queue' ? '#facc15' : '#888',
-                border: '1px solid',
-                borderColor: activeTab === 'queue' ? '#333' : 'transparent',
-                padding: '8px 16px',
-                borderRadius: '8px',
-                fontWeight: 'bold',
-                fontSize: '13px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px'
-              }}
-            >
-              <span>Queue</span>
-              <span style={{ background: '#333', color: '#fff', padding: '2px 6px', borderRadius: '10px', fontSize: '11px' }}>
-                {countQueue}
-              </span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('success')}
-              style={{
-                background: activeTab === 'success' ? '#222' : 'transparent',
-                color: activeTab === 'success' ? '#4ade80' : '#888',
-                border: '1px solid',
-                borderColor: activeTab === 'success' ? '#333' : 'transparent',
-                padding: '8px 16px',
-                borderRadius: '8px',
-                fontWeight: 'bold',
-                fontSize: '13px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px'
-              }}
-            >
-              <span>Successful</span>
-              <span style={{ background: '#333', color: '#fff', padding: '2px 6px', borderRadius: '10px', fontSize: '11px' }}>
-                {countSuccess}
-              </span>
-            </button>
-
-            <button
-              onClick={() => setActiveTab('failed')}
-              style={{
-                background: activeTab === 'failed' ? '#222' : 'transparent',
-                color: activeTab === 'failed' ? '#f87171' : '#888',
-                border: '1px solid',
-                borderColor: activeTab === 'failed' ? '#333' : 'transparent',
-                padding: '8px 16px',
-                borderRadius: '8px',
-                fontWeight: 'bold',
-                fontSize: '13px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px'
-              }}
-            >
-              <span>Failed</span>
-              <span style={{ background: '#333', color: '#fff', padding: '2px 6px', borderRadius: '10px', fontSize: '11px' }}>
-                {countFailed}
-              </span>
-            </button>
-
+            <button onClick={() => setActiveTab('queue')} style={{ background: activeTab === 'queue' ? '#222' : 'transparent', color: activeTab === 'queue' ? '#facc15' : '#888', border: 'none', padding: '8px 16px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>Queue ({countQueue})</button>
+            <button onClick={() => setActiveTab('success')} style={{ background: activeTab === 'success' ? '#222' : 'transparent', color: activeTab === 'success' ? '#4ade80' : '#888', border: 'none', padding: '8px 16px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>Successful ({countSuccess})</button>
+            <button onClick={() => setActiveTab('failed')} style={{ background: activeTab === 'failed' ? '#222' : 'transparent', color: activeTab === 'failed' ? '#f87171' : '#888', border: 'none', padding: '8px 16px', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>Failed ({countFailed})</button>
           </div>
 
           <div style={{ background: '#121212', border: '1px solid #222', borderRadius: '12px', overflow: 'hidden' }}>
             {filteredUploads.length === 0 ? (
-              <div style={{ padding: '40px', textAlign: 'center', color: '#666', fontSize: '14px' }}>
-                No files in this section.
-              </div>
+              <div style={{ padding: '40px', textAlign: 'center', color: '#666', fontSize: '14px' }}>Tiada fail dalam bahagian ini.</div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column' }}>
-                {filteredUploads.map((item, index) => (
-                  <div key={item.id} style={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    justifyContent: 'space-between', 
-                    padding: '14px 20px',
-                    borderBottom: index !== filteredUploads.length - 1 ? '1px solid #1a1a1a' : 'none'
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <span style={{ fontSize: '18px' }}>
-                        {item.status === 'success' ? '✅' : item.status === 'failed' ? '❌' : '⏳'}
-                      </span>
-                      <div>
-                        <p style={{ fontSize: '14px', fontWeight: '500', margin: '0 0 2px 0', color: '#fff' }}>{item.name}</p>
-                        <p style={{ fontSize: '12px', color: item.status === 'failed' ? '#f87171' : '#888', margin: 0 }}>
-                          {item.message}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                      <div style={{ fontSize: '13px', color: '#aaa', fontWeight: '500' }}>
-                        {item.size}
-                      </div>
-
-                      {item.photographerId === CURRENT_USER_ID && (
-                        <button 
-                          onClick={() => handleDelete(item.id)}
-                          style={{
-                            background: '#ef4444',
-                            color: '#fff',
-                            border: 'none',
-                            padding: '6px 12px',
-                            borderRadius: '6px',
-                            fontSize: '11px',
-                            fontWeight: 'bold',
-                            cursor: 'pointer'
-                          }}
-                        >
-                          Delete
-                        </button>
-                      )}
-                    </div>
+              filteredUploads.map((item) => (
+                <div key={item.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderBottom: '1px solid #1a1a1a' }}>
+                  <div>
+                    <p style={{ fontSize: '14px', fontWeight: '500', margin: '0 0 2px 0', color: '#fff' }}>{item.name}</p>
+                    <p style={{ fontSize: '12px', color: item.status === 'failed' ? '#f87171' : '#888', margin: 0 }}>{item.message}</p>
                   </div>
-                ))}
-              </div>
+                  <button onClick={() => handleDelete(item.id)} style={{ background: '#ef4444', color: '#fff', border: 'none', padding: '6px 12px', borderRadius: '6px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer' }}>Padam</button>
+                </div>
+              ))
             )}
           </div>
         </div>
-
       </div>
     </div>
   )
