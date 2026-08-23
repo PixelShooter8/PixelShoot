@@ -1,14 +1,20 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Sidebar from '@/components/Sidebar'
+import { supabase } from '@/lib/supabase'
+import { Loader2, Check, Save } from 'lucide-react'
 
 export default function PhotographerSettings() {
+  const [loading, setLoading] = useState<boolean>(true);
+  const [saving, setSaving] = useState<boolean>(false);
+  const [saved, setSaved] = useState<boolean>(false);
+
   const [profile, setProfile] = useState({
-    name: 'Ahmad Lens Studio',
-    email: 'ahmad@lensstudio.com',
-    phone: '+60 12-345 6789',
-    bio: 'Professional event & wedding photographer based in Kuala Lumpur.',
+    name: '',
+    email: '',
+    phone: '',
+    bio: '',
   })
 
   const [notifications, setNotifications] = useState({
@@ -17,26 +23,105 @@ export default function PhotographerSettings() {
     browserAlerts: false,
   })
 
-  // Data prestasi jurufoto (tanpa client rating)
-  const [statsData] = useState({
-    photosSold: 1420,
-    totalEarnings: 12450.00,
-    albumViews: 8930,
-    memberSince: 'January 2025'
+  // Data prestasi jurufoto bermula dengan nilai 0 (kosong)
+  const [statsData, setStatsData] = useState({
+    photosSold: 0,
+    totalEarnings: 0.00,
+    albumViews: 0,
+    memberSince: '2026'
   })
+
+  // Muat data profil jurufoto dari Supabase semasa mula buka halaman
+  useEffect(() => {
+    async function fetchPhotographerData() {
+      try {
+        // Dapatkan user yang sedang log masuk
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        if (user) {
+          // Anda boleh sesuaikan nama jadual (cth: 'photographers' atau 'profiles') mengikut database anda
+          const { data, error } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', user.id)
+            .single();
+
+          if (data) {
+            setProfile({
+              name: data.name || '',
+              email: data.email || user.email || '',
+              phone: data.phone || '',
+              bio: data.bio || '',
+            });
+            // Jika ada data statistik sebenar dalam database, masukkan di sini
+            setStatsData({
+              photosSold: data.photos_sold || 0,
+              totalEarnings: data.total_earnings || 0.00,
+              albumViews: data.album_views || 0,
+              memberSince: data.created_at ? new Date(data.created_at).getFullYear().toString() : '2026'
+            });
+          }
+        }
+      } catch (err) {
+        console.error('Error loading photographer profile:', err);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchPhotographerData();
+  }, []);
 
   const handleProfileChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
     setProfile(prev => ({ ...prev, [name]: value }))
   }
 
-  const handleSaveProfile = (e: React.FormEvent) => {
-    e.preventDefault()
-    alert('Profile settings updated successfully!')
-  }
+  // Simpan perubahan profil ke Supabase
+  const handleSaveProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        alert('Sila log masuk terlebih dahulu.');
+        return;
+      }
+
+      const { error } = await supabase
+        .from('profiles')
+        .upsert({
+          id: user.id,
+          name: profile.name,
+          email: profile.email,
+          phone: profile.phone,
+          bio: profile.bio,
+          updated_at: new Date()
+        });
+
+      if (error) throw error;
+
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } catch (err: any) {
+      console.error('Error saving profile:', err);
+      alert('Gagal menyimpan profil: ' + (err.message || 'Sila cuba lagi.'));
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const handleNotificationToggle = (key: keyof typeof notifications) => {
     setNotifications(prev => ({ ...prev, [key]: !prev[key] }))
+  }
+
+  if (loading) {
+    return (
+      <div style={{ background: '#0a0a0a', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#4ade80', gap: '10px', fontSize: '14px', fontFamily: 'sans-serif' }}>
+        <Loader2 className="animate-spin" size={20} /> Memuat data profil...
+      </div>
+    );
   }
 
   return (
@@ -53,6 +138,12 @@ export default function PhotographerSettings() {
             Manage your account details, preferences, and public performance stats.
           </p>
         </div>
+
+        {saved && (
+          <div style={{ marginBottom: '20px', padding: '12px 16px', background: 'rgba(20, 83, 45, 0.8)', border: '1px solid #22c55e', color: '#4ade80', borderRadius: '8px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Check size={16} /> Profil berjaya dikemaskini dan disimpan!
+          </div>
+        )}
 
         {/* Layout 2 Kolum: Kiri (Borang), Kanan (Statistik & Rekod Profil) */}
         <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: '30px', alignItems: 'start' }}>
@@ -116,9 +207,11 @@ export default function PhotographerSettings() {
                 <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                   <button 
                     type="submit"
-                    style={{ background: '#4ade80', color: '#000', border: 'none', padding: '10px 20px', borderRadius: '8px', fontWeight: 'bold', fontSize: '13px', cursor: 'pointer' }}
+                    disabled={saving}
+                    style={{ background: '#4ade80', color: '#000', border: 'none', padding: '10px 20px', borderRadius: '8px', fontWeight: 'bold', fontSize: '13px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', opacity: saving ? 0.6 : 1 }}
                   >
-                    Save Profile
+                    {saving ? <Loader2 className="animate-spin" size={14} /> : <Save size={14} />}
+                    {saving ? 'Saving...' : 'Save Profile'}
                   </button>
                 </div>
               </form>
@@ -170,7 +263,7 @@ export default function PhotographerSettings() {
 
           </div>
 
-          {/* KOLUM KANAN: Rekod Prestasi & Statistik Profil */}
+          {/* KOLUM KANAN: Rekod Prestasi & Statistik Profil (Bermula dengan 0) */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             
             <div style={{ background: '#121212', border: '1px solid #222', borderRadius: '12px', padding: '24px' }}>
