@@ -23,16 +23,7 @@ export default function AdminOrdersPage() {
   useEffect(() => {
     fetchOrders();
 
-    // TAMBAHAN FUNGSI AUTO SUPABASE: Real-time listener untuk auto-sync perubahan data
-    const channel = supabase
-      .from('orders')
-      .on('*', (payload) => {
-        console.ah?.('Realtime update:', payload);
-        fetchOrders(); // Tarik semula data secara automatik apabila ada perubahan/order baharu
-      })
-      .subscribe();
-
-    // Versi alternatif untuk Supabase Realtime v2 (jika menggunakan channel standard)
+    // SUPABASE REALTIME V2 (Betul & Disokong)
     const ordersChannel = supabase
       .channel('public:orders')
       .on(
@@ -40,7 +31,7 @@ export default function AdminOrdersPage() {
         { event: '*', schema: 'public', table: 'orders' },
         (payload) => {
           console.log('Realtime change detected:', payload);
-          fetchOrders();
+          fetchOrders(); // Tarik semula data secara automatik apabila ada order baru/perubahan
         }
       )
       .subscribe();
@@ -48,20 +39,18 @@ export default function AdminOrdersPage() {
     // Cleanup subscription apabila komponen ditutup
     return () => {
       supabase.removeChannel(ordersChannel);
-      supabase.removeChannel(channel);
     };
   }, []);
 
   async function fetchOrders() {
     setLoading(true);
-    // Tarik senarai orders dari Supabase
     const { data, error } = await supabase
       .from('orders')
       .select('*')
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.error('Ralat Supabase:', error.message, error.details, error.hint);
+      console.error('Ralat Supabase:', error.message);
     } else {
       setOrders(data || []);
     }
@@ -102,7 +91,7 @@ export default function AdminOrdersPage() {
       {/* --- KAD STATISTIK (DIBUAT TAB FILTER) --- */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         
-        {/* Card Revenue (Tunjuk Semua) */}
+        {/* Card Revenue */}
         <div 
           onClick={() => setStatusFilter('ALL')}
           className={`p-5 rounded-2xl border cursor-pointer transition ${
@@ -213,7 +202,6 @@ export default function AdminOrdersPage() {
                 </div>
 
                 <div className="flex items-center gap-3">
-                  {/* Badge Status */}
                   <span className={`px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1.5 ${
                     isPaid 
                       ? 'bg-emerald-950/80 text-emerald-400 border border-emerald-800/60' 
@@ -223,7 +211,6 @@ export default function AdminOrdersPage() {
                     {isPaid ? 'Paid' : 'Pending'}
                   </span>
 
-                  {/* Butang View Modal */}
                   <button
                     onClick={() => setSelectedOrder(order)}
                     className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-semibold rounded-lg transition flex items-center gap-1.5 border border-zinc-700/50"
@@ -237,7 +224,7 @@ export default function AdminOrdersPage() {
         </div>
       )}
 
-      {/* --- MODAL DETAIL ORDER (MUNCUL BILA VIEW TEKAN) --- */}
+      {/* --- MODAL DETAIL ORDER --- */}
       {selectedOrder && (
         <div 
           className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4"
@@ -247,7 +234,6 @@ export default function AdminOrdersPage() {
             className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 max-w-lg w-full space-y-5 shadow-2xl relative"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Header Modal */}
             <div className="flex justify-between items-start border-b border-zinc-800 pb-4">
               <div>
                 <h3 className="text-lg font-bold text-white">
@@ -265,7 +251,6 @@ export default function AdminOrdersPage() {
               </button>
             </div>
 
-            {/* Maklumat Pelanggan */}
             <div className="space-y-2 text-xs">
               <div className="flex justify-between py-1 border-b border-zinc-800/50">
                 <span className="text-zinc-400">Email Pelanggan:</span>
@@ -289,7 +274,6 @@ export default function AdminOrdersPage() {
               </div>
             </div>
 
-            {/* Actions Footer */}
             <div className="pt-3 border-t border-zinc-800 flex justify-end">
               <button
                 onClick={() => setSelectedOrder(null)}
