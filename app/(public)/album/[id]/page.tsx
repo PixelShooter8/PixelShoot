@@ -47,6 +47,15 @@ interface PhotoItem {
   original_url?: string;
 }
 
+interface WatermarkSettings {
+  watermarkType: string;
+  watermarkText: string;
+  watermarkLogoUrl: string | null;
+  watermarkOpacity: number;
+  watermarkSize: number;
+  watermarkPattern: string;
+}
+
 function GalleryContent({ albumId }: { albumId: string }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -58,6 +67,16 @@ function GalleryContent({ albumId }: { albumId: string }) {
   const [photos, setPhotos] = useState<PhotoItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   
+  // State untuk tetapan watermark dari admin_settings
+  const [watermarkConfig, setWatermarkConfig] = useState<WatermarkSettings>({
+    watermarkType: 'text',
+    watermarkText: 'PIXELSHOOT',
+    watermarkLogoUrl: null,
+    watermarkOpacity: 50,
+    watermarkSize: 30,
+    watermarkPattern: 'Tile + Center'
+  });
+
   // State untuk modal zum / view gambar besar
   const [zoomedImage, setZoomedImage] = useState<string | null>(null);
 
@@ -71,6 +90,26 @@ function GalleryContent({ albumId }: { albumId: string }) {
     async function fetchAlbumAndPhotos() {
       if (!albumId) return;
       try {
+        // 1. Ambil tetapan watermark dari jadual admin_settings
+        const { data: settingsData } = await supabase
+          .from('admin_settings')
+          .select('value')
+          .eq('key', 'site_settings')
+          .single();
+
+        if (settingsData && settingsData.value) {
+          const s = settingsData.value as any;
+          setWatermarkConfig({
+            watermarkType: s.watermarkType ?? 'text',
+            watermarkText: s.watermarkText ?? 'PIXELSHOOT',
+            watermarkLogoUrl: s.watermarkLogoUrl ?? null,
+            watermarkOpacity: s.watermarkOpacity ?? 50,
+            watermarkSize: s.watermarkSize ?? 30,
+            watermarkPattern: s.watermarkPattern ?? 'Tile + Center'
+          });
+        }
+
+        // 2. Ambil butiran album
         const { data: albumData } = await supabase
           .from('events')
           .select('*')
@@ -83,6 +122,7 @@ function GalleryContent({ albumId }: { albumId: string }) {
           currentAlbumPrice = albumData.price ?? 20;
         }
 
+        // 3. Ambil senarai foto
         const { data: photoData } = await supabase
           .from('photos')
           .select('*')
@@ -103,7 +143,6 @@ function GalleryContent({ albumId }: { albumId: string }) {
               bibValue = String(p.bib);
             }
 
-            // Paksa guna harga album jika harga foto di database rendah atau tidak mengikut harga event
             const photoPrice = (p.price && p.price > 10) ? p.price : currentAlbumPrice;
 
             return {
@@ -178,11 +217,82 @@ function GalleryContent({ albumId }: { albumId: string }) {
     window.location.href = `/checkout?album=${albumId}&total=${totalPrice}&photos=${photosParam}`;
   };
 
+  // Fungsi untuk render corak watermark dinamik mengikut panel admin
+  const renderWatermarkOverlay = (isModal = false) => {
+    const { watermarkType, watermarkText, watermarkLogoUrl, watermarkOpacity, watermarkSize, watermarkPattern } = watermarkConfig;
+    const opacityVal = watermarkOpacity / 100;
+
+    return (
+      <div className="absolute inset-0 pointer-events-none select-none overflow-hidden flex items-center justify-center z-10">
+        {/* Corak TILE (Berulang) */}
+        {(watermarkPattern === 'Tile + Center' || watermarkPattern === 'Tile Only') && (
+          <div 
+            style={{ opacity: opacityVal * 0.6 }}
+            className="absolute inset-0 grid grid-cols-3 grid-rows-3 p-2 gap-2 items-center justify-items-center"
+          >
+            {[...Array(9)].map((_, i) => (
+              <div key={i} className="flex items-center justify-center -rotate-12 w-full h-full overflow-hidden">
+                {watermarkType === 'text' ? (
+                  <span 
+                    style={{ fontSize: `${Math.max(8, watermarkSize * (isModal ? 0.8 : 0.35))}px` }}
+                    className="font-black text-white tracking-widest uppercase text-center leading-none drop-shadow-md"
+                  >
+                    {watermarkText || 'PIXELSHOOT'}
+                  </span>
+                ) : (
+                  watermarkLogoUrl && (
+                    <img
+                      src={watermarkLogoUrl}
+                      alt="Watermark Tile"
+                      style={{ 
+                        width: `${Math.max(16, watermarkSize * (isModal ? 1.5 : 0.8))}px`,
+                        maxHeight: `${Math.max(16, watermarkSize * (isModal ? 1.5 : 0.8))}px`
+                      }}
+                      className="object-contain filter brightness-250 drop-shadow-md"
+                    />
+                  )
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Corak CENTER (Tengah) */}
+        {(watermarkPattern === 'Tile + Center' || watermarkPattern === 'Center Only') && (
+          <div className="relative z-20 flex items-center justify-center">
+            {watermarkType === 'text' ? (
+              <span 
+                style={{ 
+                  opacity: opacityVal,
+                  fontSize: `${Math.max(14, watermarkSize * (isModal ? 2.5 : 0.8))}px`
+                }}
+                className="text-white font-black tracking-widest uppercase text-center px-4 drop-shadow-2xl"
+              >
+                {watermarkText || 'PIXELSHOOT'}
+              </span>
+            ) : (
+              watermarkLogoUrl && (
+                <img
+                  src={watermarkLogoUrl}
+                  alt="Watermark Center"
+                  style={{ 
+                    opacity: opacityVal,
+                    width: `${Math.max(40, watermarkSize * (isModal ? 6 : 2.5))}px`
+                  }}
+                  className="object-contain max-h-40 filter drop-shadow-2xl"
+                />
+              )
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-black text-white selection:bg-amber-500 selection:text-black">
       <header className="sticky top-0 z-50 bg-black/80 backdrop-blur-md border-b border-zinc-900">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
-          {/* Butang Back kembali ke senarai album / halaman utama carian */}
           <button 
             onClick={() => router.back()} 
             className="flex items-center gap-2 text-xs font-semibold text-zinc-400 hover:text-amber-500 transition cursor-pointer bg-transparent border-none"
@@ -271,7 +381,10 @@ function GalleryContent({ albumId }: { albumId: string }) {
                       onClick={() => toggleSelectPhoto(photo.id)} 
                     />
                     
-                    {/* BUTANG ZOOM / VIEW GAMBAR BESAR - Sentiasa nampak atau muncul bila hover */}
+                    {/* WATERMARK ADMIN DINAMIK PADA KAD GAMBAR */}
+                    {renderWatermarkOverlay(false)}
+
+                    {/* BUTANG ZOOM / VIEW GAMBAR BESAR */}
                     <button
                       type="button"
                       onClick={(e) => {
@@ -283,10 +396,6 @@ function GalleryContent({ albumId }: { albumId: string }) {
                     >
                       <Eye className="w-4 h-4 text-amber-400" />
                     </button>
-
-                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-40 group-hover:opacity-60 transition-opacity">
-                      <p className="text-white/40 text-xl font-black uppercase tracking-widest -rotate-45">WATERMARK</p>
-                    </div>
                     
                     <div 
                       onClick={() => toggleSelectPhoto(photo.id)}
@@ -318,10 +427,10 @@ function GalleryContent({ albumId }: { albumId: string }) {
         )}
       </main>
 
-      {/* MODAL LIGHTBOX / ZOOM GAMBAR BESAR */}
+      {/* MODAL LIGHTBOX / ZOOM GAMBAR BESAR DENGAN WATERMARK ADMIN */}
       {zoomedImage && (
-        <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4">
-          <div className="relative max-w-4xl w-8/10 max-h-[90vh] flex flex-col items-center">
+        <div className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center p-4">
+          <div className="relative max-w-4xl w-full max-h-[90vh] flex flex-col items-center justify-center">
             <button
               onClick={() => setZoomedImage(null)}
               className="absolute -top-12 right-0 text-white bg-zinc-800 hover:bg-zinc-700 p-2.5 rounded-full transition flex items-center justify-center shadow cursor-pointer z-50"
@@ -329,11 +438,16 @@ function GalleryContent({ albumId }: { albumId: string }) {
             >
               <X className="w-5 h-5" />
             </button>
-            <img
-              src={zoomedImage}
-              alt="Zoomed Preview"
-              className="max-w-full max-h-[80vh] object-contain rounded-xl shadow-2xl border border-zinc-800"
-            />
+
+            <div className="relative max-w-full max-h-[85vh] overflow-hidden rounded-xl shadow-2xl border border-zinc-800 bg-zinc-950 flex items-center justify-center">
+              <img
+                src={zoomedImage}
+                alt="Zoomed Preview with Watermark"
+                className="max-w-full max-h-[85vh] object-contain select-none pointer-events-none"
+              />
+              {/* WATERMARK ADMIN TURUT DIPAPARKAN PADA MODAL ZUM */}
+              {renderWatermarkOverlay(true)}
+            </div>
           </div>
         </div>
       )}
