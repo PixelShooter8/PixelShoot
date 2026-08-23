@@ -2,7 +2,7 @@
 
 import { useState, useEffect, use, Suspense } from 'react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@supabase/supabase-js';
 import { 
   ArrowLeft, 
@@ -48,6 +48,7 @@ interface PhotoItem {
 }
 
 function GalleryContent({ albumId }: { albumId: string }) {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const bibFromUrl = searchParams.get('bib') || '';
   
@@ -76,11 +77,11 @@ function GalleryContent({ albumId }: { albumId: string }) {
           .eq('id', albumId)
           .single();
 
+        let currentAlbumPrice = 20; // Default fallback
         if (albumData) {
           setAlbum(albumData);
+          currentAlbumPrice = albumData.price ?? 20;
         }
-
-        const defaultAlbumPrice = albumData?.price ?? 20.00;
 
         const { data: photoData } = await supabase
           .from('photos')
@@ -102,10 +103,13 @@ function GalleryContent({ albumId }: { albumId: string }) {
               bibValue = String(p.bib);
             }
 
+            // Paksa guna harga album jika harga foto di database rendah atau tidak mengikut harga event
+            const photoPrice = (p.price && p.price > 10) ? p.price : currentAlbumPrice;
+
             return {
               id: p.id,
               bib: bibValue,
-              price: p.price ?? defaultAlbumPrice,
+              price: photoPrice,
               url: finalUrl,
               original_url: originalFullUrl
             };
@@ -178,10 +182,14 @@ function GalleryContent({ albumId }: { albumId: string }) {
     <div className="min-h-screen bg-black text-white selection:bg-amber-500 selection:text-black">
       <header className="sticky top-0 z-50 bg-black/80 backdrop-blur-md border-b border-zinc-900">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2 text-xs font-semibold text-zinc-400 hover:text-amber-500 transition">
+          {/* Butang Back kembali ke senarai album / halaman utama carian */}
+          <button 
+            onClick={() => router.back()} 
+            className="flex items-center gap-2 text-xs font-semibold text-zinc-400 hover:text-amber-500 transition cursor-pointer bg-transparent border-none"
+          >
             <ArrowLeft className="w-4 h-4" />
-            <span>Back to Home</span>
-          </Link>
+            <span>Back to Albums</span>
+          </button>
 
           <div className="flex items-center gap-3">
             <div className="text-right hidden sm:block">
@@ -263,14 +271,14 @@ function GalleryContent({ albumId }: { albumId: string }) {
                       onClick={() => toggleSelectPhoto(photo.id)} 
                     />
                     
-                    {/* BUTANG ZOOM / VIEW GAMBAR BESAR */}
+                    {/* BUTANG ZOOM / VIEW GAMBAR BESAR - Sentiasa nampak atau muncul bila hover */}
                     <button
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
                         setZoomedImage(photo.original_url || photo.url);
                       }}
-                      className="absolute bottom-14 right-3 bg-black/70 hover:bg-black text-white p-2 rounded-full transition opacity-0 group-hover:opacity-100 flex items-center justify-center shadow border border-white/20 z-10 cursor-pointer"
+                      className="absolute bottom-14 right-3 bg-black/80 hover:bg-black text-white p-2.5 rounded-full transition opacity-100 sm:opacity-0 sm:group-hover:opacity-100 flex items-center justify-center shadow-lg border border-amber-500/50 z-20 cursor-pointer"
                       title="Zoom / View Image"
                     >
                       <Eye className="w-4 h-4 text-amber-400" />
@@ -282,14 +290,14 @@ function GalleryContent({ albumId }: { albumId: string }) {
                     
                     <div 
                       onClick={() => toggleSelectPhoto(photo.id)}
-                      className={`absolute top-3 right-3 w-7 h-7 rounded-lg flex items-center justify-center transition cursor-pointer ${
+                      className={`absolute top-3 right-3 w-7 h-7 rounded-lg flex items-center justify-center transition cursor-pointer z-20 ${
                         isSelected ? 'bg-amber-500 text-black' : 'bg-black/60 border border-white/20 text-transparent'
                       }`}
                     >
                       <Check className="w-4 h-4 stroke-[3]" />
                     </div>
 
-                    <span className="absolute bottom-3 left-3 bg-black/80 backdrop-blur-md px-2.5 py-1 rounded-md text-[10px] font-bold text-amber-500 border border-zinc-800 pointer-events-none">
+                    <span className="absolute bottom-3 left-3 bg-black/80 backdrop-blur-md px-2.5 py-1 rounded-md text-[10px] font-bold text-amber-500 border border-zinc-800 pointer-events-none z-10">
                       BIB #{photo.bib}
                     </span>
                   </div>
@@ -313,10 +321,10 @@ function GalleryContent({ albumId }: { albumId: string }) {
       {/* MODAL LIGHTBOX / ZOOM GAMBAR BESAR */}
       {zoomedImage && (
         <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4">
-          <div className="relative max-w-4xl w-full max-h-[90vh] flex flex-col items-center">
+          <div className="relative max-w-4xl w-8/10 max-h-[90vh] flex flex-col items-center">
             <button
               onClick={() => setZoomedImage(null)}
-              className="absolute -top-10 right-0 text-white bg-zinc-800 hover:bg-zinc-700 p-2 rounded-full transition flex items-center justify-center shadow cursor-pointer"
+              className="absolute -top-12 right-0 text-white bg-zinc-800 hover:bg-zinc-700 p-2.5 rounded-full transition flex items-center justify-center shadow cursor-pointer z-50"
               title="Close"
             >
               <X className="w-5 h-5" />
