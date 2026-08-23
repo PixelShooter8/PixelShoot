@@ -26,10 +26,10 @@ export default function AdminAlbumsPage() {
   useEffect(() => {
     fetchAlbums();
 
-    // Auto-sync Realtime
+    // Auto-sync Realtime untuk jadual 'events'
     const channel = supabase
-      .channel('public:albums')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'albums' }, () => {
+      .channel('public:events')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'events' }, () => {
         fetchAlbums();
       })
       .subscribe();
@@ -41,8 +41,9 @@ export default function AdminAlbumsPage() {
 
   async function fetchAlbums() {
     setLoading(true);
+    // Diubah daripada 'albums' kepada 'events' mengikut jadual Supabase anda
     const { data, error } = await supabase
-      .from('albums')
+      .from('events')
       .select('*')
       .order('created_at', { ascending: false });
 
