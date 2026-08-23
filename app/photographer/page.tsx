@@ -1,11 +1,51 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { createClient } from '@supabase/supabase-js'
 import Sidebar from '@/components/Sidebar'
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+)
+
+interface AlbumItem {
+  id: string;
+  title: string;
+  event_date?: string;
+  location?: string;
+  status?: string;
+}
 
 export default function PhotographerHome() {
   const [searchType, setSearchType] = useState('bib')
   const [searchValue, setSearchValue] = useState('')
+  const [albums, setAlbums] = useState<AlbumItem[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    async function fetchAlbums() {
+      try {
+        const { data, error } = await supabase
+          .from('events')
+          .select('id, title, event_date, location, status')
+          .order('created_at', { ascending: false })
+          .limit(3); // Ambil 3 album terkini untuk dipaparkan sebagai featured
+
+        if (error) {
+          console.error('Error fetching featured albums:', error);
+        } else if (data) {
+          setAlbums(data);
+        }
+      } catch (err) {
+        console.error('Unexpected error:', err);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchAlbums();
+  }, []);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
@@ -15,36 +55,6 @@ export default function PhotographerHome() {
     }
     alert(`Searching photos using ${searchType === 'bib' ? 'BIB No: ' + searchValue : 'AI Selfie'}`)
   }
-
-  const albums = [
-    {
-      id: 1,
-      title: 'Sarawak Marathon 2026',
-      date: '09 July 2026',
-      location: 'Kuching',
-      badge: 'LATEST',
-      badgeColor: '#facc15',
-      link: '/photographer/albums/1'
-    },
-    {
-      id: 2,
-      title: 'Kuching Night Run 2026',
-      date: '15 August 2026',
-      location: 'Kuching',
-      badge: 'POPULAR',
-      badgeColor: '#38bdf8',
-      link: '/photographer/albums/2'
-    },
-    {
-      id: 3,
-      title: 'Borneo Cycling Challenge',
-      date: '02 September 2026',
-      location: 'Miri',
-      badge: 'ACTIVE',
-      badgeColor: '#4ade80',
-      link: '/photographer/albums/3'
-    }
-  ]
 
   return (
     <div style={{ background: '#0a0a0a', minHeight: '100vh', display: 'flex', color: '#fff', fontFamily: 'sans-serif' }}>
@@ -166,42 +176,48 @@ export default function PhotographerHome() {
           <h2 style={{ fontSize: '20px', fontWeight: 'bold', marginBottom: '8px' }}>Featured Event Albums</h2>
           <p style={{ color: '#888', fontSize: '13px', marginBottom: '20px' }}>Select a running event to view the full gallery and upload status.</p>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px' }}>
-            {albums.map((album) => (
-              <a 
-                key={album.id}
-                href={album.link}
-                style={{ 
-                  background: '#121212', 
-                  border: '1px solid #222', 
-                  borderRadius: '12px', 
-                  overflow: 'hidden', 
-                  cursor: 'pointer',
-                  textDecoration: 'none',
-                  color: 'inherit',
-                  display: 'block',
-                  transition: 'transform 0.2s, border-color 0.2s'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.transform = 'translateY(-4px)'
-                  e.currentTarget.style.borderColor = '#facc15'
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = 'translateY(0)'
-                  e.currentTarget.style.borderColor = '#222'
-                }}
-              >
-                <div style={{ height: '130px', background: '#1c1c1c', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#666' }}>🖼️ Event Photo</div>
-                <div style={{ padding: '16px' }}>
-                  <span style={{ background: album.badgeColor, color: '#000', fontSize: '10px', fontWeight: 'bold', padding: '3px 8px', borderRadius: '4px' }}>
-                    {album.badge}
-                  </span>
-                  <h3 style={{ fontSize: '15px', margin: '10px 0 6px 0', color: '#fff' }}>{album.title}</h3>
-                  <p style={{ fontSize: '12px', color: '#888', margin: 0 }}>📅 {album.date} • 📍 {album.location}</p>
-                </div>
-              </a>
-            ))}
-          </div>
+          {loading ? (
+            <div style={{ color: '#888', fontSize: '14px' }}>Loading albums...</div>
+          ) : albums.length === 0 ? (
+            <div style={{ color: '#888', fontSize: '14px' }}>No albums found. Create one from the admin panel.</div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '20px' }}>
+              {albums.map((album) => (
+                <a 
+                  key={album.id}
+                  href={`/album/${album.id}`}
+                  style={{ 
+                    background: '#121212', 
+                    border: '1px solid #222', 
+                    borderRadius: '12px', 
+                    overflow: 'hidden', 
+                    cursor: 'pointer',
+                    textDecoration: 'none',
+                    color: 'inherit',
+                    display: 'block',
+                    transition: 'transform 0.2s, border-color 0.2s'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-4px)'
+                    e.currentTarget.style.borderColor = '#facc15'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0)'
+                    e.currentTarget.style.borderColor = '#222'
+                  }}
+                >
+                  <div style={{ height: '130px', background: '#1c1c1c', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#666' }}>🖼️ Event Photo</div>
+                  <div style={{ padding: '16px' }}>
+                    <span style={{ background: '#facc15', color: '#000', fontSize: '10px', fontWeight: 'bold', padding: '3px 8px', borderRadius: '4px' }}>
+                      {album.status ? album.status.toUpperCase() : 'ACTIVE'}
+                    </span>
+                    <h3 style={{ fontSize: '15px', margin: '10px 0 6px 0', color: '#fff' }}>{album.title}</h3>
+                    <p style={{ fontSize: '12px', color: '#888', margin: 0 }}>📅 {album.event_date || 'No Date'} • 📍 {album.location || 'No Location'}</p>
+                  </div>
+                </a>
+              ))}
+            </div>
+          )}
         </div>
 
       </div>
