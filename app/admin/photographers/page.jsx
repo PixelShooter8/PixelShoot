@@ -33,10 +33,20 @@ export default function AdminPhotographersPage() {
   const [photographers, setPhotographers] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Tarik senarai jurufoto dari database Supabase
+  // Tarik senarai jurufoto dari database Supabase (Khusus untuk Admin)
   useEffect(() => {
     async function fetchPhotographers() {
       try {
+        // Semak sesi pengguna semasa untuk pastikan keselamatan tambahan di klien
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (!session) {
+          console.warn("Tiada sesi aktif ditemui.");
+          setLoading(false);
+          return;
+        }
+
+        // Tarik senarai profil dari Supabase
         const { data, error } = await supabase
           .from('profiles')
           .select('*');
@@ -45,8 +55,8 @@ export default function AdminPhotographersPage() {
           console.error('Error fetching photographers:', error.message);
         } else if (data) {
           const formatted = data.map((item) => ({
-            id: item.id,
-            name: item.name || item.full_name || 'Tanpa Nama',
+            id: item.id || Math.random().toString(),
+            name: item.name || item.full_name || item.email?.split('@')[0] || 'Tanpa Nama',
             email: item.email || '',
             phone: item.phone || '-',
             location: item.location || 'Sarawak',
@@ -84,13 +94,12 @@ export default function AdminPhotographersPage() {
     await supabase.from('profiles').update({ status: 'Approved' }).eq('id', id);
   };
 
-  // Fungsi simpan data jemputan/pendaftaran ke dalam database profiles
+  // Fungsi simpan data jemputan ke dalam table profiles
   const handleSendInvite = async (e) => {
     e.preventDefault();
     if (!inviteEmail) return;
 
     try {
-      // Masukkan rekod emel baru ke dalam table profiles dengan status 'Pending'
       const { error } = await supabase
         .from('profiles')
         .insert([{ email: inviteEmail, status: 'Pending', role: 'photographer' }]);
@@ -98,11 +107,10 @@ export default function AdminPhotographersPage() {
       if (error) {
         alert('Gagal menambah jurufoto: ' + error.message);
       } else {
-        alert(`Jemaah/Jurufoto dengan emel ${inviteEmail} telah berjaya direkodkan! Sila minta mereka daftar masuk.`);
+        alert(`Jemaah/Jurufoto dengan emel ${inviteEmail} telah berjaya direkodkan!`);
         setInviteEmail('');
         setInviteMessage('');
         setIsInviteOpen(false);
-        // Muat semula halaman / senarai
         window.location.reload();
       }
     } catch (err) {
@@ -178,7 +186,7 @@ export default function AdminPhotographersPage() {
             >
               <div className="flex items-start gap-4">
                 <div className="w-12 h-12 rounded-full bg-amber-500 text-black font-bold text-base flex items-center justify-center shrink-0 mt-1 sm:mt-0">
-                  {photographer.name.charAt(0)}
+                  {photographer.name.charAt(0).toUpperCase()}
                 </div>
 
                 <div className="space-y-1">

@@ -76,8 +76,8 @@ export default function NewAlbumPage() {
     setLoading(true);
 
     try {
-      // Diselaraskan menggunakan jadual 'albums'
-      const { error } = await supabase.from('albums').insert([
+      // Diselaraskan menggunakan jadual 'events' supaya wujud di website & table editor
+      const { error } = await supabase.from('events').insert([
         {
           title: formData.title,
           slug: formData.slug,
