@@ -14,7 +14,6 @@ import {
   MapPin,
   HelpCircle,
   Download,
-  ShieldCheck,
   Mail,
   Send,
   User,
@@ -68,15 +67,14 @@ export default function PublicHomePage() {
             eventData.map(async (album) => {
               const { data: photoData } = await supabase
                 .from('photos')
-                .select('watermark_url, original_url, url')
+                .select('watermark_url, original_url, preview_url')
                 .eq('event_id', album.id)
                 .order('created_at', { ascending: false })
-                .limit(1)
-                .single();
+                .limit(1);
 
               let coverUrl = album.cover_url || album.coverUrl || '';
-              if (photoData) {
-                coverUrl = photoData.watermark_url || photoData.original_url || photoData.url || coverUrl;
+              if (photoData && photoData.length > 0) {
+                coverUrl = photoData[0].watermark_url || photoData[0].original_url || photoData[0].preview_url || coverUrl;
               }
 
               return {
