@@ -62,7 +62,6 @@ export default function AdminAlbumsPage() {
   return (
     <div className="p-6 md:p-8 bg-black min-h-screen text-white space-y-8 max-w-7xl mx-auto">
       
-      {/* Header Halaman */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-800 pb-6">
         <div>
           <h1 className="text-xl md:text-2xl font-bold tracking-tight text-white">
@@ -81,7 +80,6 @@ export default function AdminAlbumsPage() {
         </a>
       </div>
 
-      {/* Senarai Kad Album */}
       {loading ? (
         <div className="bg-zinc-950 border border-zinc-800/80 rounded-2xl p-12 text-center text-zinc-500 text-sm">
           Sedang memuatkan album...
@@ -93,8 +91,8 @@ export default function AdminAlbumsPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {albums.map((album) => {
-            // URL PUBLIC untuk dikongsi kepada pelawat/peserta
-            const publicEventUrl = typeof window !== 'undefined' ? `${window.location.origin}/events/${album.id}` : '';
+            // URL PUBLIC untuk orang awam/peserta (menghala ke app/public/album/[id])
+            const publicEventUrl = typeof window !== 'undefined' ? `${window.location.origin}/public/album/${album.id}` : '';
             const isCopied = copiedId === album.id;
             const isPublished = album.status?.toLowerCase() === 'published' || album.is_published;
 
@@ -103,7 +101,6 @@ export default function AdminAlbumsPage() {
                 key={album.id}
                 className="bg-zinc-900/90 border border-zinc-800 rounded-2xl p-5 flex flex-col justify-between space-y-6 hover:border-zinc-700 transition"
               >
-                {/* Bahagian Atas Kad */}
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 text-zinc-400 text-xs font-medium">
@@ -133,7 +130,6 @@ export default function AdminAlbumsPage() {
                     </div>
                   </div>
 
-                  {/* Kotak Pautan URL (Public Link) */}
                   <div className="bg-black/40 border border-zinc-800 rounded-xl px-3 py-2 flex items-center justify-between gap-2">
                     <span className="text-[11px] text-zinc-400 truncate font-mono">
                       {publicEventUrl}
@@ -148,7 +144,6 @@ export default function AdminAlbumsPage() {
                   </div>
                 </div>
 
-                {/* Bahagian Bawah (Butang Tindakan Admin) */}
                 <div className="grid grid-cols-2 gap-2 pt-2 border-t border-zinc-800/80">
                   <a
                     href={`/admin/albums/${album.id}`}
