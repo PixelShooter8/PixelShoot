@@ -21,6 +21,7 @@ interface UploadItem {
 interface AlbumItem {
   id: string;
   title: string;
+  price?: number;
 }
 
 export default function PhotographerUpload() {
@@ -38,9 +39,10 @@ export default function PhotographerUpload() {
 
   useEffect(() => {
     async function fetchAlbums() {
+      // Ambil id, title, dan kolum price dari jadual events
       const { data, error } = await supabase
         .from('events')
-        .select('id, title')
+        .select('id, title, price')
         .order('created_at', { ascending: false })
 
       if (!error && data && data.length > 0) {
@@ -136,21 +138,13 @@ export default function PhotographerUpload() {
       return
     }
 
-    // Ambil harga sebenar daripada jadual 'events' berdasarkan album yang dipilih
-    const { data: albumData, error: albumError } = await supabase
-      .from('events')
-      .select('price')
-      .eq('id', selectedAlbum)
-      .single()
+    // Cari album yang sedang dipilih daripada senarai state 'albums'
+    const currentAlbumObj = albums.find(a => a.id === selectedAlbum)
+    const albumPrice = currentAlbumObj?.price ?? 20.00 // Ambil harga dari state atau guna 20 sebagai asas
 
-    if (albumError) {
-      alert('Gagal mendapatkan maklumat harga album.')
-      return
-    }
+    console.log("Album dipilih:", selectedAlbum, "Harga dikesan:", albumPrice)
 
-    const albumPrice = albumData?.price ?? 10.00
-
-    // Ambil sesi terkini untuk pastikan token auth disertakan
+    // Ambil sesi terkini untuk token auth
     const { data: { session } } = await supabase.auth.getSession()
     const token = session?.access_token
 
@@ -165,7 +159,6 @@ export default function PhotographerUpload() {
         const originalFilePath = `${selectedAlbum}/${uniqueName}.${fileExt}`
         const previewFilePath = `${selectedAlbum}/${uniqueName}_preview.jpg`
 
-        // Konfigurasi Header Authorization secara manual jika token wujud
         const uploadOptions: { cacheControl?: string; upsert?: boolean; headers?: { authorization: string } } = {
           upsert: false
         }
@@ -200,7 +193,7 @@ export default function PhotographerUpload() {
           .from('photo-preview')
           .getPublicUrl(previewFilePath)
 
-        // 3. Simpan maklumat ke dalam jadual 'photos' dengan harga mengikut album
+        // 3. Simpan maklumat ke dalam jadual 'photos' menggunakan harga sebenar album
         const { error: dbError } = await supabase
           .from('photos')
           .insert([
@@ -209,7 +202,7 @@ export default function PhotographerUpload() {
               original_url: originalUrlData.publicUrl,
               preview_url: previewUrlData.publicUrl,
               watermark_url: previewUrlData.publicUrl,
-              price: albumPrice, // Harga mengikut tetapan album
+              price: albumPrice, // Harga mengikut tetapan di table events
               bib_numbers: []
             }
           ])
@@ -227,7 +220,7 @@ export default function PhotographerUpload() {
 
     setIsUploading(false)
     setActiveTab('success')
-    alert(`Berjaya memuat naik ${successCount} gambar ke album!`)
+    alert(`Berjaya memuat naik ${successCount} gambar ke album dengan harga RM${albumPrice}!`)
   }
 
   const countSuccess = uploads.filter(item => item.status === 'success').length
@@ -242,7 +235,7 @@ export default function PhotographerUpload() {
       <div style={{ flex: 1, padding: '40px', overflowY: 'auto' }}>
         <div style={{ marginBottom: '30px' }}>
           <h1 style={{ marginTop: 0, fontSize: '24px', fontWeight: 'bold' }}>Upload Event Photos</h1>
-          <p style={{ color: '#888', fontSize: '14px' }}>Muat naik dengan token sesi autentikasi bersepadu.</p>
+          <p style={{ color: '#888', fontSize: '14px' }}>Muat naik dengan harga automatik mengikut album.</p>
         </div>
 
         <div style={{ background: '#121212', border: '1px solid #222', borderRadius: '12px', padding: '24px', maxWidth: '850px', marginBottom: '25px' }}>
@@ -261,7 +254,7 @@ export default function PhotographerUpload() {
               <option value="">Tiada album ditemui</option>
             ) : (
               albums.map((album) => (
-                <option key={album.id} value={album.id}>{album.title}</option>
+                <option key={album.id} value={album.id}>{album.title} (RM {album.price ?? 0})</option>
               ))
             )}
           </select>
