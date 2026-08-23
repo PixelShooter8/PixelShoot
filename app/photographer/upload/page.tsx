@@ -30,28 +30,14 @@ export default function PhotographerUpload() {
   const [activeTab, setActiveTab] = useState<'success' | 'failed' | 'queue'>('queue')
   const [uploads, setUploads] = useState<UploadItem[]>([])
   const [isUploading, setIsUploading] = useState(false)
-  const [sessionUser, setSessionUser] = useState<any>(null)
 
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const MAX_FILE_SIZE_MB = 15
   const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
 
-  // Semak sesi log masuk & ambil album
   useEffect(() => {
-    async function checkAuthAndFetchAlbums() {
-      // 1. Dapatkan sesi pengguna yang sedang log masuk
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-      
-      if (sessionError || !session) {
-        alert('Sesi log masuk tidak sah atau anda belum log masuk. Sila log masuk semula sebagai jurufoto.')
-        // Anda boleh arahkan ke halaman login jika perlu: window.location.href = '/login'
-        return
-      }
-
-      setSessionUser(session.user)
-
-      // 2. Ambil senarai album
+    async function fetchAlbums() {
       const { data, error } = await supabase
         .from('events')
         .select('id, title')
@@ -62,7 +48,7 @@ export default function PhotographerUpload() {
         setSelectedAlbum(data[0].id)
       }
     }
-    checkAuthAndFetchAlbums()
+    fetchAlbums()
   }, [])
 
   const handleFiles = (files: FileList | null) => {
@@ -139,11 +125,6 @@ export default function PhotographerUpload() {
   }
 
   const startUploadProcess = async () => {
-    if (!sessionUser) {
-      alert('Akses ditolak: Anda perlu log masuk sebagai jurufoto yang sah.')
-      return
-    }
-
     const queueItems = uploads.filter(item => item.status === 'queue')
     if (queueItems.length === 0) {
       alert('Tiada fail dalam baris gilir.')
@@ -154,6 +135,10 @@ export default function PhotographerUpload() {
       alert('Sila pilih album sasaran terlebih dahulu.')
       return
     }
+
+    // Ambil sesi terkini untuk pastikan token auth disertakan
+    const { data: { session } } = await supabase.auth.getSession()
+    const token = session?.access_token
 
     setIsUploading(true)
     let successCount = 0
@@ -166,10 +151,18 @@ export default function PhotographerUpload() {
         const originalFilePath = `${selectedAlbum}/${uniqueName}.${fileExt}`
         const previewFilePath = `${selectedAlbum}/${uniqueName}_preview.jpg`
 
+        // Konfigurasi Header Authorization secara manual jika token wujud
+        const uploadOptions: { cacheControl?: string; upsert?: boolean; headers?: { authorization: string } } = {
+          upsert: false
+        }
+        if (token) {
+          uploadOptions.headers = { authorization: `Bearer ${token}` }
+        }
+
         // 1. Muat naik fail asal ke bucket 'photo-original'
         const { error: originalError } = await supabase.storage
           .from('photo-original')
-          .upload(originalFilePath, item.file)
+          .upload(originalFilePath, item.file, uploadOptions)
 
         if (originalError) throw originalError
 
@@ -183,7 +176,8 @@ export default function PhotographerUpload() {
           .from('photo-preview')
           .upload(previewFilePath, compressedBlob, {
             contentType: 'image/jpeg',
-            upsert: true
+            upsert: true,
+            ...(token ? { headers: { authorization: `Bearer ${token}` } } : {})
           })
 
         if (previewError) throw previewError
@@ -233,7 +227,7 @@ export default function PhotographerUpload() {
       <div style={{ flex: 1, padding: '40px', overflowY: 'auto' }}>
         <div style={{ marginBottom: '30px' }}>
           <h1 style={{ marginTop: 0, fontSize: '24px', fontWeight: 'bold' }}>Upload Event Photos</h1>
-          <p style={{ color: '#888', fontSize: '14px' }}>Sistem muat naik selamat dengan pengesahan sesi log masuk jurufoto.</p>
+          <p style={{ color: '#888', fontSize: '14px' }}>Muat naik dengan token sesi autentikasi bersepadu.</p>
         </div>
 
         <div style={{ background: '#121212', border: '1px solid #222', borderRadius: '12px', padding: '24px', maxWidth: '850px', marginBottom: '25px' }}>
