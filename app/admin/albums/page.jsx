@@ -93,7 +93,7 @@ export default function AdminAlbumsPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {albums.map((album) => {
-            // Diselaraskan menggunakan format /events/[slug] (jika tiada slug, guna id)
+            // Diselaraskan menggunakan format /events/[slug] (jika tiada slug, guna id sebagai fallback)
             const identifier = album.slug || album.id;
             const albumUrl = typeof window !== 'undefined' ? `${window.location.origin}/events/${identifier}` : '';
             const isCopied = copiedId === album.id;
