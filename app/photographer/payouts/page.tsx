@@ -6,11 +6,11 @@ import Sidebar from '@/components/Sidebar'
 export default function PhotographerPayouts() {
   const [photographerPlan] = useState<'free' | 'subs' | 'premium'>('subs')
   
-  // State untuk maklumat akaun bank
+  // State untuk maklumat akaun bank (Dikosongkan untuk akaun baharu)
   const [bankInfo, setBankInfo] = useState({
-    bankName: 'Maybank Berhad',
-    accountHolder: 'Ahmad Lens Studio',
-    accountNumber: '1642 **** *321'
+    bankName: '',
+    accountHolder: '',
+    accountNumber: ''
   })
 
   // State untuk mengawal buka/tutup modal
@@ -25,17 +25,15 @@ export default function PhotographerPayouts() {
   // State untuk input jumlah payout
   const [payoutAmount, setPayoutAmount] = useState('')
 
-  // Simulasi baki akaun dan sejarah pengeluaran (payouts)
+  // Baki akaun ditetapkan kepada 0.00 memandangkan belum ada jualan
   const [balanceData] = useState({
-    availableBalance: 840.50,
-    pendingBalance: 399.50,
-    totalPaidOut: 2450.00
+    availableBalance: 0.00,
+    pendingBalance: 0.00,
+    totalPaidOut: 0.00
   })
 
-  const [payoutHistory] = useState([
-    { id: 'PAY-1002', date: '01 August 2026', amount: 1200.00, method: 'Direct Bank Transfer (Maybank - ***4321)', status: 'Completed' },
-    { id: 'PAY-1001', date: '01 July 2026', amount: 1250.00, method: 'Direct Bank Transfer (Maybank - ***4321)', status: 'Completed' },
-  ])
+  // Sejarah pengeluaran kosong (tiada rekod awal)
+  const [payoutHistory] = useState<any[]>([])
 
   const handleSaveBankInfo = (e: React.FormEvent) => {
     e.preventDefault()
@@ -136,23 +134,30 @@ export default function PhotographerPayouts() {
               onClick={() => setIsEditingBank(true)}
               style={{ background: 'transparent', border: '1px solid #333', color: '#fff', padding: '6px 12px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer' }}
             >
-              Edit Bank Info
+              {bankInfo.bankName ? 'Edit Bank Info' : '+ Add Bank Info'}
             </button>
           </div>
-          <div style={{ display: 'flex', gap: '30px', fontSize: '13px', color: '#ccc' }}>
-            <div>
-              <p style={{ color: '#888', fontSize: '11px', margin: '0 0 2px 0' }}>Bank Name</p>
-              <p style={{ fontWeight: 'bold', color: '#fff', margin: 0 }}>{bankInfo.bankName}</p>
+          
+          {bankInfo.bankName ? (
+            <div style={{ display: 'flex', gap: '30px', fontSize: '13px', color: '#ccc' }}>
+              <div>
+                <p style={{ color: '#888', fontSize: '11px', margin: '0 0 2px 0' }}>Bank Name</p>
+                <p style={{ fontWeight: 'bold', color: '#fff', margin: 0 }}>{bankInfo.bankName}</p>
+              </div>
+              <div>
+                <p style={{ color: '#888', fontSize: '11px', margin: '0 0 2px 0' }}>Account Holder</p>
+                <p style={{ fontWeight: 'bold', color: '#fff', margin: 0 }}>{bankInfo.accountHolder}</p>
+              </div>
+              <div>
+                <p style={{ color: '#888', fontSize: '11px', margin: '0 0 2px 0' }}>Account Number</p>
+                <p style={{ fontWeight: 'bold', color: '#fff', margin: 0 }}>{bankInfo.accountNumber}</p>
+              </div>
             </div>
-            <div>
-              <p style={{ color: '#888', fontSize: '11px', margin: '0 0 2px 0' }}>Account Holder</p>
-              <p style={{ fontWeight: 'bold', color: '#fff', margin: 0 }}>{bankInfo.accountHolder}</p>
-            </div>
-            <div>
-              <p style={{ color: '#888', fontSize: '11px', margin: '0 0 2px 0' }}>Account Number</p>
-              <p style={{ fontWeight: 'bold', color: '#fff', margin: 0 }}>{bankInfo.accountNumber}</p>
-            </div>
-          </div>
+          ) : (
+            <p style={{ fontSize: '13px', color: '#888', margin: 0 }}>
+              Tiada akaun bank didaftarkan. Sila klik butang di atas untuk menambah maklumat akaun bank anda.
+            </p>
+          )}
         </div>
 
         {/* Modal Request Payout */}
@@ -187,15 +192,15 @@ export default function PhotographerPayouts() {
               <form onSubmit={handleSaveBankInfo} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
                 <div>
                   <label style={{ fontSize: '12px', color: '#888', display: 'block', marginBottom: '5px' }}>Bank Name</label>
-                  <input type="text" value={tempBankName} onChange={(e) => setTempBankName(e.target.value)} style={{ width: '100%', padding: '10px', background: '#0a0a0a', border: '1px solid #333', color: '#fff', borderRadius: '6px' }} required />
+                  <input type="text" value={tempBankName} onChange={(e) => setTempBankName(e.target.value)} placeholder="cth: Maybank Berhad" style={{ width: '100%', padding: '10px', background: '#0a0a0a', border: '1px solid #333', color: '#fff', borderRadius: '6px' }} required />
                 </div>
                 <div>
                   <label style={{ fontSize: '12px', color: '#888', display: 'block', marginBottom: '5px' }}>Account Holder Name</label>
-                  <input type="text" value={tempAccountHolder} onChange={(e) => setTempAccountHolder(e.target.value)} style={{ width: '100%', padding: '10px', background: '#0a0a0a', border: '1px solid #333', color: '#fff', borderRadius: '6px' }} required />
+                  <input type="text" value={tempAccountHolder} onChange={(e) => setTempAccountHolder(e.target.value)} placeholder="cth: Ahmad Studio" style={{ width: '100%', padding: '10px', background: '#0a0a0a', border: '1px solid #333', color: '#fff', borderRadius: '6px' }} required />
                 </div>
                 <div>
                   <label style={{ fontSize: '12px', color: '#888', display: 'block', marginBottom: '5px' }}>Account Number</label>
-                  <input type="text" value={tempAccountNumber} onChange={(e) => setTempAccountNumber(e.target.value)} style={{ width: '100%', padding: '10px', background: '#0a0a0a', border: '1px solid #333', color: '#fff', borderRadius: '6px' }} required />
+                  <input type="text" value={tempAccountNumber} onChange={(e) => setTempAccountNumber(e.target.value)} placeholder="cth: 1642xxxxxxxx" style={{ width: '100%', padding: '10px', background: '#0a0a0a', border: '1px solid #333', color: '#fff', borderRadius: '6px' }} required />
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '10px' }}>
                   <button type="button" onClick={() => setIsEditingBank(false)} style={{ background: 'transparent', border: '1px solid #444', color: '#ccc', padding: '8px 14px', borderRadius: '6px', cursor: 'pointer' }}>Cancel</button>
@@ -211,19 +216,27 @@ export default function PhotographerPayouts() {
           <div style={{ padding: '20px 24px', borderBottom: '1px solid #222' }}>
             <h3 style={{ fontSize: '16px', fontWeight: 'bold', margin: 0 }}>Payout History</h3>
           </div>
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
-            {payoutHistory.map((payout, index) => (
-              <div key={payout.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 24px', borderBottom: index !== payoutHistory.length - 1 ? '1px solid #1a1a1a' : 'none' }}>
-                <div>
-                  <p style={{ fontSize: '14px', fontWeight: 'bold', margin: '0 0 4px 0', color: '#fff' }}>{payout.id} - <span style={{ color: '#4ade80' }}>RM {payout.amount.toFixed(2)}</span></p>
-                  <p style={{ fontSize: '12px', color: '#888', margin: 0 }}>📅 {payout.date} &nbsp;|&nbsp; 🏦 {payout.method}</p>
+          
+          {payoutHistory.length === 0 ? (
+            <div style={{ padding: '40px 24px', textAlign: 'center', color: '#666' }}>
+              <p style={{ fontSize: '14px', margin: '0 0 4px 0', color: '#888' }}>Tiada rekod payout buat masa ini</p>
+              <p style={{ fontSize: '12px', margin: 0 }}>Sejarah pengeluaran wang akan dipaparkan di sini apabila anda mula melakukan jualan.</p>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              {payoutHistory.map((payout, index) => (
+                <div key={payout.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 24px', borderBottom: index !== payoutHistory.length - 1 ? '1px solid #1a1a1a' : 'none' }}>
+                  <div>
+                    <p style={{ fontSize: '14px', fontWeight: 'bold', margin: '0 0 4px 0', color: '#fff' }}>{payout.id} - <span style={{ color: '#4ade80' }}>RM {payout.amount.toFixed(2)}</span></p>
+                    <p style={{ fontSize: '12px', color: '#888', margin: 0 }}>📅 {payout.date} &nbsp;|&nbsp; 🏦 {payout.method}</p>
+                  </div>
+                  <div>
+                    <span style={{ background: 'rgba(74, 222, 128, 0.1)', color: '#4ade80', border: '1px solid rgba(74, 222, 128, 0.2)', padding: '4px 10px', borderRadius: '6px', fontSize: '12px', fontWeight: '500' }}>{payout.status}</span>
+                  </div>
                 </div>
-                <div>
-                  <span style={{ background: 'rgba(74, 222, 128, 0.1)', color: '#4ade80', border: '1px solid rgba(74, 222, 128, 0.2)', padding: '4px 10px', borderRadius: '6px', fontSize: '12px', fontWeight: '500' }}>{payout.status}</span>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
 
       </div>
