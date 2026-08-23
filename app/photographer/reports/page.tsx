@@ -1,7 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Sidebar from '@/components/Sidebar'
+import { supabase } from '@/lib/supabase'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 
@@ -21,19 +22,48 @@ export default function PhotographerReports() {
   const platformCommissionRate = getCommissionRate(photographerPlan)
   const paymentGatewayFeeRate = 0.03 // Caj Payment Gateway 3%
 
-  // Ditetapkan kosong untuk akaun baharu / belum ada jualan
-  const [salesData] = useState({
-    history: []
-  })
+  // State untuk data jualan yang diambil secara automatik dari Supabase
+  const [salesHistory, setSalesHistory] = useState<any[]>([])
+  const [loading, setLoading] = useState<boolean>(true)
 
-  const totalGross = salesData.history.reduce((acc, item: any) => acc + item.grossEarnings, 0)
+  // Ambil data dari Supabase secara automatik apabila komponen dimuatkan
+  useEffect(() => {
+    async function fetchSalesData() {
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) {
+          setLoading(false)
+          return
+        }
+
+        const { data, error } = await supabase
+          .from('sales')
+          .select('*')
+          .eq('photographer_id', user.id)
+
+        if (error) {
+          console.error('Error fetching sales:', error.message)
+        } else if (data) {
+          setSalesHistory(data)
+        }
+      } catch (err) {
+        console.error('Unexpected error:', err)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchSalesData()
+  }, [])
+
+  const totalGross = salesHistory.reduce((acc, item: any) => acc + (item.grossEarnings || 0), 0)
   const totalFee = totalGross * platformCommissionRate
   const totalNet = totalGross - totalFee
-  const totalPhotos = salesData.history.reduce((acc, item: any) => acc + item.photosSold, 0)
+  const totalPhotos = salesHistory.reduce((acc, item: any) => acc + (item.photosSold || 0), 0)
 
   // FUNGSI DOWNLOAD PDF KESELURUHAN (HEADER BUTTON)
   const downloadReportPDF = () => {
-    if (salesData.history.length === 0) {
+    if (salesHistory.length === 0) {
       alert('Tiada data jualan untuk dimuat turun.');
       return;
     }
@@ -46,7 +76,7 @@ export default function PhotographerReports() {
     doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 30)
     
     const tableColumn = ["Event", "Date", "Photos Sold", "Gross (RM)", "Nett (RM)"]
-    const tableRows = salesData.history.map((item: any) => [
+    const tableRows = salesHistory.map((item: any) => [
       item.event,
       item.date,
       item.photosSold.toString(),
@@ -66,7 +96,7 @@ export default function PhotographerReports() {
   // FUNGSI DOWNLOAD PDF KHUSUS UNTUK SETIAP ALBUM/EVENT
   const downloadEventPDF = (eventItem: any) => {
     const doc = new jsPDF()
-    const gross = eventItem.grossEarnings
+    const gross = eventItem.grossEarnings || 0
     const webFee = gross * platformCommissionRate
     const gatewayFee = gross * paymentGatewayFeeRate
     const nett = gross - webFee - gatewayFee
@@ -77,7 +107,7 @@ export default function PhotographerReports() {
     doc.text(`Date: ${eventItem.date}`, 14, 27)
 
     const tableColumn = ["File Name", "Customer", "Payment Method", "Price (RM)"]
-    const tableRows = eventItem.items.map((sub: any) => [
+    const tableRows = (eventItem.items || []).map((sub: any) => [
       sub.fileName,
       sub.customerName,
       sub.paymentMethod,
@@ -185,20 +215,24 @@ export default function PhotographerReports() {
             <span style={{ fontSize: '12px', color: '#888' }}>Click on an event to view transaction details & download report</span>
           </div>
 
-          {salesData.history.length === 0 ? (
+          {loading ? (
+            <div style={{ padding: '40px 24px', textAlign: 'center', color: '#888' }}>
+              <p style={{ fontSize: '14px', margin: 0 }}>Memuat data jualan dari pangkalan data...</p>
+            </div>
+          ) : salesHistory.length === 0 ? (
             <div style={{ padding: '40px 24px', textAlign: 'center', color: '#666' }}>
               <p style={{ fontSize: '14px', margin: '0 0 4px 0', color: '#888' }}>Tiada rekod jualan event buat masa ini</p>
-              <p style={{ fontSize: '12px', margin: 0 }}>Senarai jualan foto akan dipaparkan di sini setelah pelanggan mula membeli foto anda.</p>
+              <p style={{ fontSize: '12px', margin: 0 }}>Senarai jualan foto akan dipaparkan di sini secara automatik setelah pelanggan mula membeli foto anda.</p>
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column' }}>
-              {salesData.history.map((item: any, index: number) => {
-                const itemFee = item.grossEarnings * platformCommissionRate
-                const itemNet = item.grossEarnings - itemFee
+              {salesHistory.map((item: any, index: number) => {
+                const itemFee = (item.grossEarnings || 0) * platformCommissionRate
+                const itemNet = (item.grossEarnings || 0) - itemFee
                 const isExpanded = expandedEventId === item.id
 
                 return (
-                  <div key={item.id} style={{ borderBottom: index !== salesData.history.length - 1 ? '1px solid #1a1a1a' : 'none' }}>
+                  <div key={item.id} style={{ borderBottom: index !== salesHistory.length - 1 ? '1px solid #1a1a1a' : 'none' }}>
                     
                     {/* Event Main Row */}
                     <div 
@@ -227,7 +261,7 @@ export default function PhotographerReports() {
                           Nett: RM {itemNet.toFixed(2)}
                         </p>
                         <p style={{ fontSize: '12px', color: '#888', margin: 0 }}>
-                          Gross: RM {item.grossEarnings.toFixed(2)}
+                          Gross: RM {(item.grossEarnings || 0).toFixed(2)}
                         </p>
                       </div>
                     </div>
