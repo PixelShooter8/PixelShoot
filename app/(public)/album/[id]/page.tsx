@@ -67,7 +67,7 @@ function GalleryContent({ albumId }: { albumId: string }) {
   const [photos, setPhotos] = useState<PhotoItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   
-  // State untuk tetapan watermark dari admin_settings
+  // State untuk tetapan watermark dari panel admin (admin_settings -> site_settings)
   const [watermarkConfig, setWatermarkConfig] = useState<WatermarkSettings>({
     watermarkType: 'text',
     watermarkText: 'PIXELSHOOT',
@@ -90,7 +90,7 @@ function GalleryContent({ albumId }: { albumId: string }) {
     async function fetchAlbumAndPhotos() {
       if (!albumId) return;
       try {
-        // 1. Ambil tetapan watermark dari jadual admin_settings
+        // 1. Ambil tetapan watermark sebenar dari jadual admin_settings
         const { data: settingsData } = await supabase
           .from('admin_settings')
           .select('value')
@@ -217,25 +217,27 @@ function GalleryContent({ albumId }: { albumId: string }) {
     window.location.href = `/checkout?album=${albumId}&total=${totalPrice}&photos=${photosParam}`;
   };
 
-  // Fungsi untuk render corak watermark dinamik mengikut panel admin
+  // Fungsi render watermark dinamik sepenuhnya mengikut tetapan panel admin (opacity selari)
   const renderWatermarkOverlay = (isModal = false) => {
     const { watermarkType, watermarkText, watermarkLogoUrl, watermarkOpacity, watermarkSize, watermarkPattern } = watermarkConfig;
-    const opacityVal = watermarkOpacity / 100;
+    
+    // Guna nilai telus (opacity) terus daripada tetapan admin (dihadkan minimum 0.2 supaya tidak hilang langsung)
+    const opacityVal = Math.max(0.2, watermarkOpacity / 100);
 
     return (
       <div className="absolute inset-0 pointer-events-none select-none overflow-hidden flex items-center justify-center z-10">
         {/* Corak TILE (Berulang) */}
         {(watermarkPattern === 'Tile + Center' || watermarkPattern === 'Tile Only') && (
           <div 
-            style={{ opacity: opacityVal * 0.6 }}
+            style={{ opacity: Math.min(1, opacityVal * 1.1) }}
             className="absolute inset-0 grid grid-cols-3 grid-rows-3 p-2 gap-2 items-center justify-items-center"
           >
             {[...Array(9)].map((_, i) => (
               <div key={i} className="flex items-center justify-center -rotate-12 w-full h-full overflow-hidden">
                 {watermarkType === 'text' ? (
                   <span 
-                    style={{ fontSize: `${Math.max(8, watermarkSize * (isModal ? 0.8 : 0.35))}px` }}
-                    className="font-black text-white tracking-widest uppercase text-center leading-none drop-shadow-md"
+                    style={{ fontSize: `${Math.max(10, watermarkSize * (isModal ? 0.9 : 0.4))}px` }}
+                    className="font-black text-white tracking-widest uppercase text-center leading-none drop-shadow-lg"
                   >
                     {watermarkText || 'PIXELSHOOT'}
                   </span>
@@ -245,10 +247,10 @@ function GalleryContent({ albumId }: { albumId: string }) {
                       src={watermarkLogoUrl}
                       alt="Watermark Tile"
                       style={{ 
-                        width: `${Math.max(16, watermarkSize * (isModal ? 1.5 : 0.8))}px`,
-                        maxHeight: `${Math.max(16, watermarkSize * (isModal ? 1.5 : 0.8))}px`
+                        width: `${Math.max(20, watermarkSize * (isModal ? 1.8 : 0.9))}px`,
+                        maxHeight: `${Math.max(20, watermarkSize * (isModal ? 1.8 : 0.9))}px`
                       }}
-                      className="object-contain filter brightness-250 drop-shadow-md"
+                      className="object-contain filter brightness-250 drop-shadow-lg"
                     />
                   )
                 )}
@@ -264,7 +266,7 @@ function GalleryContent({ albumId }: { albumId: string }) {
               <span 
                 style={{ 
                   opacity: opacityVal,
-                  fontSize: `${Math.max(14, watermarkSize * (isModal ? 2.5 : 0.8))}px`
+                  fontSize: `${Math.max(16, watermarkSize * (isModal ? 2.8 : 0.9))}px`
                 }}
                 className="text-white font-black tracking-widest uppercase text-center px-4 drop-shadow-2xl"
               >
@@ -277,9 +279,9 @@ function GalleryContent({ albumId }: { albumId: string }) {
                   alt="Watermark Center"
                   style={{ 
                     opacity: opacityVal,
-                    width: `${Math.max(40, watermarkSize * (isModal ? 6 : 2.5))}px`
+                    width: `${Math.max(50, watermarkSize * (isModal ? 6.5 : 2.8))}px`
                   }}
-                  className="object-contain max-h-40 filter drop-shadow-2xl"
+                  className="object-contain max-h-48 filter drop-shadow-2xl"
                 />
               )
             )}
@@ -381,7 +383,7 @@ function GalleryContent({ albumId }: { albumId: string }) {
                       onClick={() => toggleSelectPhoto(photo.id)} 
                     />
                     
-                    {/* WATERMARK ADMIN DINAMIK PADA KAD GAMBAR */}
+                    {/* WATERMARK ADMIN SEBENAR DI ATAS KAD GAMBAR */}
                     {renderWatermarkOverlay(false)}
 
                     {/* BUTANG ZOOM / VIEW GAMBAR BESAR */}
@@ -430,7 +432,7 @@ function GalleryContent({ albumId }: { albumId: string }) {
       {/* MODAL LIGHTBOX / ZOOM GAMBAR BESAR DENGAN WATERMARK ADMIN */}
       {zoomedImage && (
         <div className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center p-4">
-          <div className="relative max-w-4xl w-full max-h-[90vh] flex flex-col items-center justify-center">
+          <div className="relative max-w-4xl w-8/10 max-h-[90vh] flex flex-col items-center">
             <button
               onClick={() => setZoomedImage(null)}
               className="absolute -top-12 right-0 text-white bg-zinc-800 hover:bg-zinc-700 p-2.5 rounded-full transition flex items-center justify-center shadow cursor-pointer z-50"
@@ -438,14 +440,14 @@ function GalleryContent({ albumId }: { albumId: string }) {
             >
               <X className="w-5 h-5" />
             </button>
-
+            
             <div className="relative max-w-full max-h-[85vh] overflow-hidden rounded-xl shadow-2xl border border-zinc-800 bg-zinc-950 flex items-center justify-center">
               <img
                 src={zoomedImage}
                 alt="Zoomed Preview with Watermark"
-                className="max-w-full max-h-[85vh] object-contain select-none pointer-events-none"
+                className="max-w-full max-h-[80vh] object-contain select-none pointer-events-none"
               />
-              {/* WATERMARK ADMIN TURUT DIPAPARKAN PADA MODAL ZUM */}
+              {/* WATERMARK ADMIN TURUT DIPAPARKAN DENGAN JELAS PADA MODAL ZUM */}
               {renderWatermarkOverlay(true)}
             </div>
           </div>
