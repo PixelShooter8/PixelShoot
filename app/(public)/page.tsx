@@ -63,8 +63,9 @@ export default function PublicHomePage() {
         if (error) throw error;
 
         if (eventData && eventData.length > 0) {
-          const albumsWithCover = await Promise.all(
+          const albumsWithCoverAndCount = await Promise.all(
             eventData.map(async (album) => {
+              // 1. Ambil foto terkini untuk cover
               const { data: photoData } = await supabase
                 .from('photos')
                 .select('watermark_url, original_url, preview_url')
@@ -72,19 +73,28 @@ export default function PublicHomePage() {
                 .order('created_at', { ascending: false })
                 .limit(1);
 
-              let coverUrl = album.cover_url || album.coverUrl || '';
+              let coverUrl = '';
               if (photoData && photoData.length > 0) {
-                coverUrl = photoData[0].watermark_url || photoData[0].original_url || photoData[0].preview_url || coverUrl;
+                coverUrl = photoData[0].watermark_url || photoData[0].original_url || photoData[0].preview_url || '';
               }
+
+              // 2. Kira jumlah foto dalam event ini
+              const { count, error: countError } = await supabase
+                .from('photos')
+                .select('*', { count: 'exact', head: true })
+                .eq('event_id', album.id);
+
+              const photoCount = countError ? 0 : (count || 0);
 
               return {
                 ...album,
-                cover_url: coverUrl
+                cover_url: coverUrl,
+                photo_count: photoCount
               };
             })
           );
 
-          setFeaturedAlbums(albumsWithCover as Album[]);
+          setFeaturedAlbums(albumsWithCoverAndCount as Album[]);
         }
       } catch (err: unknown) {
         if (err instanceof Error) {
@@ -331,12 +341,16 @@ export default function PublicHomePage() {
                 key={album.id} 
                 className="bg-zinc-950 border border-zinc-900 rounded-2xl overflow-hidden hover:border-zinc-700 transition group flex flex-col justify-between"
               >
-                <div className="relative h-48 overflow-hidden bg-zinc-900">
-                  <img 
-                    src={album.cover_url || album.coverUrl || 'https://images.unsplash.com/photo-1530549387789-4c1017266635?auto=format&fit=crop&q=80&w=800'} 
-                    alt={album.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition duration-500" 
-                  />
+                <div className="relative h-48 overflow-hidden bg-zinc-900 flex items-center justify-center">
+                  {album.cover_url ? (
+                    <img 
+                      src={album.cover_url} 
+                      alt={album.title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition duration-500" 
+                    />
+                  ) : (
+                    <span className="text-zinc-600 text-xs">🖼️ No Cover Photo</span>
+                  )}
                   <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-transparent to-transparent" />
                   <span className="absolute bottom-3 right-3 bg-black/80 backdrop-blur-md text-zinc-300 text-[10px] font-medium px-2.5 py-1 rounded-md border border-zinc-800 flex items-center gap-1">
                     <ImageIcon className="w-3 h-3 text-amber-500" /> {album.photo_count || 0} Photos
