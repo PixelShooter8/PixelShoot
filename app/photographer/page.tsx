@@ -15,6 +15,7 @@ interface AlbumItem {
   event_date?: string;
   location?: string;
   status?: string;
+  cover_url?: string;
 }
 
 export default function PhotographerHome() {
@@ -24,18 +25,43 @@ export default function PhotographerHome() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    async function fetchAlbums() {
+    async function fetchAlbumsWithCover() {
       try {
-        const { data, error } = await supabase
+        const { data: eventData, error: eventError } = await supabase
           .from('events')
           .select('id, title, event_date, location, status')
           .order('created_at', { ascending: false })
-          .limit(3); // Ambil 3 album terkini untuk dipaparkan sebagai featured
+          .limit(3);
 
-        if (error) {
-          console.error('Error fetching featured albums:', error);
-        } else if (data) {
-          setAlbums(data);
+        if (eventError) {
+          console.error('Error fetching featured albums:', eventError);
+          return;
+        }
+
+        if (eventData && eventData.length > 0) {
+          const albumsWithCover = await Promise.all(
+            eventData.map(async (album) => {
+              const { data: photoData } = await supabase
+                .from('photos')
+                .select('watermark_url, original_url, url')
+                .eq('event_id', album.id)
+                .order('created_at', { ascending: false })
+                .limit(1)
+                .single();
+
+              let coverUrl = '';
+              if (photoData) {
+                coverUrl = photoData.watermark_url || photoData.original_url || photoData.url || '';
+              }
+
+              return {
+                ...album,
+                cover_url: coverUrl
+              };
+            })
+          );
+
+          setAlbums(albumsWithCover);
         }
       } catch (err) {
         console.error('Unexpected error:', err);
@@ -44,7 +70,7 @@ export default function PhotographerHome() {
       }
     }
 
-    fetchAlbums();
+    fetchAlbumsWithCover();
   }, []);
 
   const handleSearch = (e: React.FormEvent) => {
@@ -206,7 +232,17 @@ export default function PhotographerHome() {
                     e.currentTarget.style.borderColor = '#222'
                   }}
                 >
-                  <div style={{ height: '130px', background: '#1c1c1c', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#666' }}>🖼️ Event Photo</div>
+                  <div style={{ height: '140px', background: '#1c1c1c', position: 'relative', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {album.cover_url ? (
+                      <img 
+                        src={album.cover_url} 
+                        alt={album.title} 
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      />
+                    ) : (
+                      <span style={{ color: '#666', fontSize: '12px' }}>🖼️ No Cover Photo</span>
+                    )}
+                  </div>
                   <div style={{ padding: '16px' }}>
                     <span style={{ background: '#facc15', color: '#000', fontSize: '10px', fontWeight: 'bold', padding: '3px 8px', borderRadius: '4px' }}>
                       {album.status ? album.status.toUpperCase() : 'ACTIVE'}

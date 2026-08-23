@@ -55,15 +55,38 @@ export default function PublicHomePage() {
   useEffect(() => {
     async function fetchPublishedAlbums() {
       try {
-        const { data, error } = await supabase
+        const { data: eventData, error } = await supabase
           .from('events')
           .select('*')
           .eq('status', 'Published')
           .order('event_date', { ascending: false });
 
         if (error) throw error;
-        if (data) {
-          setFeaturedAlbums(data as Album[]);
+
+        if (eventData && eventData.length > 0) {
+          const albumsWithCover = await Promise.all(
+            eventData.map(async (album) => {
+              const { data: photoData } = await supabase
+                .from('photos')
+                .select('watermark_url, original_url, url')
+                .eq('event_id', album.id)
+                .order('created_at', { ascending: false })
+                .limit(1)
+                .single();
+
+              let coverUrl = album.cover_url || album.coverUrl || '';
+              if (photoData) {
+                coverUrl = photoData.watermark_url || photoData.original_url || photoData.url || coverUrl;
+              }
+
+              return {
+                ...album,
+                cover_url: coverUrl
+              };
+            })
+          );
+
+          setFeaturedAlbums(albumsWithCover as Album[]);
         }
       } catch (err: unknown) {
         if (err instanceof Error) {
@@ -281,24 +304,6 @@ export default function PublicHomePage() {
               </p>
             </div>
           </div>
-        </div>
-
-        <div className="mt-12 bg-zinc-950 border border-zinc-900 rounded-2xl p-6 sm:p-8 flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="space-y-2 text-center md:text-left">
-            <div className="inline-flex items-center gap-1.5 text-amber-500 text-xs font-semibold uppercase tracking-wider">
-              <ShieldCheck className="w-4 h-4" /> Frequently Asked Questions (FAQ)
-            </div>
-            <h4 className="text-lg font-bold text-white">Do users need to create an account to search for photos?</h4>
-            <p className="text-xs text-zinc-400 max-w-2xl">
-              <strong className="text-white">No account needed!</strong> You can search for your photos instantly using your BIB number or selfie for free without any hassle or registration required.
-            </p>
-          </div>
-          <a
-            href="#contact"
-            className="bg-amber-500 hover:bg-amber-400 text-black font-extrabold text-xs px-6 py-3 rounded-xl transition shrink-0 shadow-lg shadow-amber-500/10 flex items-center gap-2"
-          >
-            <Mail className="w-4 h-4" /> Contact Support
-          </a>
         </div>
       </section>
 
