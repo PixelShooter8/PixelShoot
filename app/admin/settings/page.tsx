@@ -1,47 +1,145 @@
 'use client';
 
-import { useState } from 'react';
-import { CreditCard, Mail, Percent, Image as ImageIcon, Save, Check, Upload, Trash2, Lock, Type } from 'lucide-react';
+import { useState, useEffect, ChangeEvent, FormEvent } from 'react';
+import { CreditCard, Mail, Percent, Image as ImageIcon, Save, Check, Upload, Trash2, Lock, Type, Loader2 } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
 
 export default function AdminSettingsPage() {
-  const [saved, setSaved] = useState(false);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [saving, setSaving] = useState<boolean>(false);
+  const [saved, setSaved] = useState<boolean>(false);
+  const [uploadingLogo, setUploadingLogo] = useState<boolean>(false);
 
-  // Stripe State
-  const [publishableKey, setPublishableKey] = useState('');
-  const [secretKey, setSecretKey] = useState('');
-
-  // Resend Email State
-  const [resendApiKey, setResendApiKey] = useState('');
-  const [senderEmail, setSenderEmail] = useState('noreply@pixelshoot.com');
-  const [adminEmail, setAdminEmail] = useState('admin@pixelshoot.com');
-
-  // Platform Fee State
-  const [platformFee, setPlatformFee] = useState(25);
-
-  // Watermark State
-  const [watermarkType, setWatermarkType] = useState('text'); // 'text' OR 'logo'
-  const [watermarkText, setWatermarkText] = useState('PIXELSHOOT');
+  // States
+  const [publishableKey, setPublishableKey] = useState<string>('');
+  const [secretKey, setSecretKey] = useState<string>('');
+  const [resendApiKey, setResendApiKey] = useState<string>('');
+  const [senderEmail, setSenderEmail] = useState<string>('noreply@pixelshoot.com');
+  const [adminEmail, setAdminEmail] = useState<string>('admin@pixelshoot.com');
+  const [platformFee, setPlatformFee] = useState<number>(25);
+  const [watermarkType, setWatermarkType] = useState<string>('text');
+  const [watermarkText, setWatermarkText] = useState<string>('PIXELSHOOT');
   const [watermarkLogoUrl, setWatermarkLogoUrl] = useState<string | null>(null);
-  const [watermarkOpacity, setWatermarkOpacity] = useState(50);
-  const [watermarkSize, setWatermarkSize] = useState(30);
-  const [watermarkPattern, setWatermarkPattern] = useState('Tile + Center');
+  const [watermarkOpacity, setWatermarkOpacity] = useState<number>(50);
+  const [watermarkSize, setWatermarkSize] = useState<number>(30);
+  const [watermarkPattern, setWatermarkPattern] = useState<string>('Tile + Center');
 
-  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Muat data dari Supabase semasa mula buka halaman
+  useEffect(() => {
+    async function fetchSettings() {
+      try {
+        const { data, error } = await supabase
+          .from('admin_settings')
+          .select('value')
+          .eq('key', 'site_settings')
+          .single();
+
+        if (data && data.value) {
+          const s = data.value as any;
+          if (s.publishableKey !== undefined) setPublishableKey(s.publishableKey);
+          if (s.secretKey !== undefined) setSecretKey(s.secretKey);
+          if (s.resendApiKey !== undefined) setResendApiKey(s.resendApiKey);
+          if (s.senderEmail !== undefined) setSenderEmail(s.senderEmail);
+          if (s.adminEmail !== undefined) setAdminEmail(s.adminEmail);
+          if (s.platformFee !== undefined) setPlatformFee(s.platformFee);
+          if (s.watermarkType !== undefined) setWatermarkType(s.watermarkType);
+          if (s.watermarkText !== undefined) setWatermarkText(s.watermarkText);
+          if (s.watermarkLogoUrl !== undefined) setWatermarkLogoUrl(s.watermarkLogoUrl);
+          if (s.watermarkOpacity !== undefined) setWatermarkOpacity(s.watermarkOpacity);
+          if (s.watermarkSize !== undefined) setWatermarkSize(s.watermarkSize);
+          if (s.watermarkPattern !== undefined) setWatermarkPattern(s.watermarkPattern);
+        }
+      } catch (err) {
+        console.error('Error loading settings from Supabase:', err);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchSettings();
+  }, []);
+
+  // Muat naik logo terus ke Supabase Storage
+  const handleLogoUpload = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setWatermarkLogoUrl(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+
+    try {
+      setUploadingLogo(true);
+      const fileExt = file.name.split('.').pop();
+      const fileName = `watermark-logo-${Date.now()}.${fileExt}`;
+      const filePath = `${fileName}`;
+
+      // Muat naik ke bucket 'admin-assets'
+      const { error: uploadError } = await supabase.storage
+        .from('admin-assets')
+        .upload(filePath, file);
+
+      if (uploadError) {
+        throw uploadError;
+      }
+
+      // Dapatkan Public URL untuk fail tersebut
+      const { data } = supabase.storage
+        .from('admin-assets')
+        .getPublicUrl(filePath);
+
+      if (data && data.publicUrl) {
+        setWatermarkLogoUrl(data.publicUrl);
+      }
+    } catch (err: any) {
+      console.error('Error uploading logo:', err);
+      alert('Gagal memuat naik logo: ' + (err.message || 'Sila cuba lagi.'));
+    } finally {
+      setUploadingLogo(false);
     }
   };
 
-  const handleSaveAll = (e: React.FormEvent) => {
+  const handleSaveAll = async (e: FormEvent) => {
     e.preventDefault();
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
+    setSaving(true);
+
+    const settingsData = {
+      publishableKey,
+      secretKey,
+      resendApiKey,
+      senderEmail,
+      adminEmail,
+      platformFee,
+      watermarkType,
+      watermarkText,
+      watermarkLogoUrl,
+      watermarkOpacity,
+      watermarkSize,
+      watermarkPattern,
+    };
+
+    try {
+      const { error } = await supabase
+        .from('admin_settings')
+        .upsert({ key: 'site_settings', value: settingsData, updated_at: new Date() }, { onConflict: 'key' });
+
+      if (error) {
+        throw error;
+      }
+
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } catch (err) {
+      console.error('Error saving settings to Supabase:', err);
+      alert('Failed to save settings to Supabase.');
+    } finally {
+      setSaving(false);
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh] text-amber-500 gap-2 text-sm font-medium">
+        <Loader2 className="animate-spin" size={20} /> Loading settings from Supabase...
+      </div>
+    );
+  }
 
   return (
     <div className="p-4 md:p-8 text-white max-w-4xl mx-auto space-y-6 pb-20">
@@ -71,15 +169,17 @@ export default function AdminSettingsPage() {
 
         <button
           onClick={handleSaveAll}
-          className="hidden md:flex items-center gap-2 px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-black font-bold text-sm rounded-xl transition shadow-lg cursor-pointer"
+          disabled={saving}
+          className="hidden md:flex items-center gap-2 px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-black font-bold text-sm rounded-xl transition shadow-lg cursor-pointer disabled:opacity-50"
         >
-          <Save size={16} /> Save Settings
+          {saving ? <Loader2 className="animate-spin" size={16} /> : <Save size={16} />} 
+          {saving ? 'Saving...' : 'Save Settings'}
         </button>
       </div>
 
       {saved && (
         <div className="p-3 bg-emerald-950/80 border border-emerald-500 text-emerald-400 text-xs md:text-sm rounded-xl flex items-center gap-2">
-          <Check size={16} /> Settings successfully saved!
+          <Check size={16} /> Settings successfully saved to Supabase!
         </div>
       )}
 
@@ -238,8 +338,9 @@ export default function AdminSettingsPage() {
                 <label className="text-xs text-zinc-400 font-medium block mb-1">Upload Pixelshoot Logo (Transparent PNG)</label>
                 <div className="flex items-center gap-2">
                   <label className="flex-1 flex items-center justify-center gap-2 py-2.5 px-3 bg-zinc-950 border border-zinc-800 hover:border-zinc-700 rounded-xl cursor-pointer text-xs text-zinc-300 transition">
-                    <Upload size={14} /> Upload PNG Logo
-                    <input type="file" accept="image/png" onChange={handleLogoUpload} className="hidden" />
+                    {uploadingLogo ? <Loader2 className="animate-spin" size={14} /> : <Upload size={14} />} 
+                    {uploadingLogo ? 'Uploading to Supabase...' : 'Upload PNG Logo'}
+                    <input type="file" accept="image/png" onChange={handleLogoUpload} disabled={uploadingLogo} className="hidden" />
                   </label>
                   {watermarkLogoUrl && (
                     <button
@@ -385,9 +486,11 @@ export default function AdminSettingsPage() {
       <div className="fixed bottom-4 left-4 right-4 md:hidden z-50">
         <button
           onClick={handleSaveAll}
-          className="w-full py-3.5 bg-amber-500 hover:bg-amber-600 text-black font-bold text-sm rounded-xl transition shadow-2xl flex items-center justify-center gap-2 cursor-pointer"
+          disabled={saving}
+          className="w-full py-3.5 bg-amber-500 hover:bg-amber-600 text-black font-bold text-sm rounded-xl transition shadow-2xl flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
         >
-          <Save size={18} /> Save All Settings
+          {saving ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />} 
+          {saving ? 'Saving...' : 'Save All Settings'}
         </button>
       </div>
 
