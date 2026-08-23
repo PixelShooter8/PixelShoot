@@ -19,6 +19,24 @@ export default function AdminPayoutsPage() {
 
   useEffect(() => {
     fetchPayouts();
+
+    // TAMBAHAN FUNGSI AUTO SUPABASE: Real-time listener untuk auto-sync perubahan data payout
+    const payoutsChannel = supabase
+      .channel('public:payouts')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'payouts' },
+        (payload) => {
+          console.log('Realtime change detected in payouts:', payload);
+          fetchPayouts(); // Auto-refresh data apabila terdapat kemas kini atau permohonan baru
+        }
+      )
+      .subscribe();
+
+    // Cleanup subscription apabila komponen ditutup
+    return () => {
+      supabase.removeChannel(payoutsChannel);
+    };
   }, []);
 
   async function fetchPayouts() {
@@ -47,7 +65,7 @@ export default function AdminPayoutsPage() {
       alert('Gagal mengemas kini status payout.');
       console.error(error);
     } else {
-      // Refresh senarai
+      // Refresh senarai (Realtime juga akan bantu sync, tapi ini untuk tindakan serta-merta)
       fetchPayouts();
     }
   }
@@ -82,7 +100,7 @@ export default function AdminPayoutsPage() {
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold">Photographer Payouts</h1>
-        <p className="text-zinc-400 text-sm">Uruskan bayaran komisen & tuntutan hasil jurufoto</p>
+        <p className="text-zinc-400 text-sm">Uruskan bayaran komisen & tuntutan hasil jurufoto (Auto-synced)</p>
       </div>
 
       {/* --- KAD STATISTIK --- */}

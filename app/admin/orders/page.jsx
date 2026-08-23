@@ -22,6 +22,34 @@ export default function AdminOrdersPage() {
 
   useEffect(() => {
     fetchOrders();
+
+    // TAMBAHAN FUNGSI AUTO SUPABASE: Real-time listener untuk auto-sync perubahan data
+    const channel = supabase
+      .from('orders')
+      .on('*', (payload) => {
+        console.ah?.('Realtime update:', payload);
+        fetchOrders(); // Tarik semula data secara automatik apabila ada perubahan/order baharu
+      })
+      .subscribe();
+
+    // Versi alternatif untuk Supabase Realtime v2 (jika menggunakan channel standard)
+    const ordersChannel = supabase
+      .channel('public:orders')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'orders' },
+        (payload) => {
+          console.log('Realtime change detected:', payload);
+          fetchOrders();
+        }
+      )
+      .subscribe();
+
+    // Cleanup subscription apabila komponen ditutup
+    return () => {
+      supabase.removeChannel(ordersChannel);
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   async function fetchOrders() {
@@ -68,7 +96,7 @@ export default function AdminOrdersPage() {
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold">Orders</h1>
-        <p className="text-zinc-400 text-sm">Customer purchases and payment status</p>
+        <p className="text-zinc-400 text-sm">Customer purchases and payment status (Auto-synced)</p>
       </div>
 
       {/* --- KAD STATISTIK (DIBUAT TAB FILTER) --- */}

@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { createClient } from '@supabase/supabase-js';
 import { 
   BarChart3, 
   Eye, 
@@ -14,26 +15,73 @@ import {
   Download
 } from 'lucide-react';
 
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+);
+
 export default function SalesReportPage() {
-  const [albums] = useState([]);
+  const [albums, setAlbums] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchAlbumsAndSales();
+
+    // TAMBAHAN FUNGSI AUTO SUPABASE: Real-time listener untuk auto-sync perubahan data album & jualan
+    const albumsChannel = supabase
+      .channel('public:albums')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'albums' },
+        (payload) => {
+          console.log('Realtime change detected in albums:', payload);
+          fetchAlbumsAndSales(); // Auto-refresh data apabila terdapat perubahan
+        }
+      )
+      .subscribe();
+
+    // Cleanup subscription apabila komponen ditutup
+    return () => {
+      supabase.removeChannel(albumsChannel);
+    };
+  }, []);
+
+  async function fetchAlbumsAndSales() {
+    setLoading(true);
+    // Mengambil data dari table 'albums'. (Pastikan kolum berkaitan wujud di Supabase anda)
+    const { data, error } = await supabase
+      .from('albums')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Ralat mengambil data sales report:', error);
+    } else {
+      setAlbums(data || []);
+    }
+    setLoading(false);
+  }
 
   // Overall Totals
-  const totalViews = albums.reduce((acc, alb) => acc + alb.views, 0);
-  const totalSearches = albums.reduce((acc, alb) => acc + alb.bibSearches + alb.selfieSearches, 0);
-  const totalPhotosSold = albums.reduce((acc, alb) => acc + alb.photosSold, 0);
-  const totalGrossSales = albums.reduce((acc, alb) => acc + (alb.photosSold * alb.pricePerPhoto), 0);
+  const totalViews = albums.reduce((acc, alb) => acc + (alb.views || 0), 0);
+  const totalSearches = albums.reduce((acc, alb) => acc + (alb.bibSearches || 0) + (alb.selfieSearches || 0), 0);
+  const totalPhotosSold = albums.reduce((acc, alb) => acc + (alb.photosSold || 0), 0);
+  const totalGrossSales = albums.reduce((acc, alb) => acc + ((alb.photosSold || 0) * (alb.pricePerPhoto || 0)), 0);
 
   // --- EXPORT TO CSV (ALL ALBUMS) ---
   const exportAllToCSV = () => {
     const headers = [
-      "Album ID,Album Name,Date,Total Photos,Price Per Photo (RM),Views,Bib Searches,Selfie Searches,Photos Sold,Gross Sales (RM),Platform Fee (10%) (RM),Nett Sales (RM)"
+      "Album ID,Album Name,Date,Total Photos,Price Per Photo (RM),Views,Bib Searches,Selfie Searches,Photos Sold,Gross Sales (RM),Platform Fee (%) (RM),Nett Sales (RM)"
     ];
 
     const rows = albums.map(alb => {
-      const gross = alb.photosSold * alb.pricePerPhoto;
-      const fee = (gross * alb.platformFeePercent) / 100;
+      const price = alb.pricePerPhoto || 0;
+      const sold = alb.photosSold || 0;
+      const feePercent = alb.platformFeePercent || 10;
+      const gross = sold * price;
+      const fee = (gross * feePercent) / 100;
       const nett = gross - fee;
-      return `"${alb.id}","${alb.title}","${alb.date}",${alb.totalPhotos},${alb.pricePerPhoto},${alb.views},${alb.bibSearches},${alb.selfieSearches},${alb.photosSold},${gross.toFixed(2)},${fee.toFixed(2)},${nett.toFixed(2)}`;
+      return `"${alb.id}","${alb.title || ''}","${alb.date || ''}",${alb.totalPhotos || 0},${price},${alb.views || 0},${alb.bibSearches || 0},${alb.selfieSearches || 0},${sold},${gross.toFixed(2)},${fee.toFixed(2)},${nett.toFixed(2)}`;
     });
 
     const csvContent = "data:text/csv;charset=utf-8," + [headers, ...rows].join("\n");
@@ -48,30 +96,33 @@ export default function SalesReportPage() {
 
   // --- EXPORT TO CSV (SINGLE ALBUM) ---
   const exportSingleAlbumToCSV = (album) => {
-    const gross = album.photosSold * album.pricePerPhoto;
-    const fee = (gross * album.platformFeePercent) / 100;
+    const price = album.pricePerPhoto || 0;
+    const sold = album.photosSold || 0;
+    const feePercent = album.platformFeePercent || 10;
+    const gross = sold * price;
+    const fee = (gross * feePercent) / 100;
     const nett = gross - fee;
 
     const csvData = [
-      ["Album Sales Report - " + album.title],
-      ["Date", album.date],
-      ["Total Photos", album.totalPhotos],
-      ["Price / Photo", "RM " + album.pricePerPhoto],
+      ["Album Sales Report - " + (album.title || 'Untitled')],
+      ["Date", album.date || '-'],
+      ["Total Photos", album.totalPhotos || 0],
+      ["Price / Photo", "RM " + price],
       [""],
       ["Metric", "Value"],
-      ["Views (Gallery Views)", album.views],
-      ["Bib Searches", album.bibSearches],
-      ["Selfie Searches", album.selfieSearches],
-      ["Total Photos Sold", album.photosSold],
+      ["Views (Gallery Views)", album.views || 0],
+      ["Bib Searches", album.bibSearches || 0],
+      ["Selfie Searches", album.selfieSearches || 0],
+      ["Total Photos Sold", sold],
       ["Gross Sales", "RM " + gross.toFixed(2)],
-      ["Platform Fee (" + album.platformFeePercent + "%)", "RM " + fee.toFixed(2)],
+      ["Platform Fee (" + feePercent + "%)", "RM " + fee.toFixed(2)],
       ["Nett Sales", "RM " + nett.toFixed(2)]
     ].map(e => e.join(",")).join("\n");
 
     const encodedUri = encodeURI("data:text/csv;charset=utf-8," + csvData);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `Report_${album.title.replace(/\s+/g, '_')}.csv`);
+    link.setAttribute("download", `Report_${(album.title || 'Album').replace(/\s+/g, '_')}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -88,7 +139,7 @@ export default function SalesReportPage() {
             Sales Report & Analytics
           </h1>
           <p className="text-xs text-zinc-400 mt-1">
-            Sales performance, views, and image searches by album.
+            Sales performance, views, and image searches by album (Auto-synced).
           </p>
         </div>
 
@@ -159,17 +210,25 @@ export default function SalesReportPage() {
           Reports by Album
         </h2>
 
-        {albums.length === 0 ? (
+        {loading ? (
+          <div className="bg-zinc-950 border border-zinc-800/80 rounded-2xl p-12 text-center text-zinc-500 text-sm">
+            Sedang memuatkan laporan jualan...
+          </div>
+        ) : albums.length === 0 ? (
           <div className="bg-zinc-950 border border-zinc-800/80 rounded-2xl p-12 text-center text-zinc-500 text-sm">
             No sales reports found.
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-6">
             {albums.map((album) => {
-              const grossSales = album.photosSold * album.pricePerPhoto;
-              const platformFee = (grossSales * album.platformFeePercent) / 100;
+              const price = album.pricePerPhoto || 0;
+              const sold = album.photosSold || 0;
+              const feePercent = album.platformFeePercent || 10;
+              const grossSales = sold * price;
+              const platformFee = (grossSales * feePercent) / 100;
               const nettSales = grossSales - platformFee;
-              const totalSearchesAlbum = album.bibSearches + album.selfieSearches;
+              const totalSearchesAlbum = (album.bibSearches || 0) + (album.selfieSearches || 0);
+              const totalPhotos = album.totalPhotos || 1; // elak bahagi dengan zero
 
               return (
                 <div 
@@ -183,16 +242,16 @@ export default function SalesReportPage() {
                         <Folder className="w-5 h-5 md:w-6 md:h-6" />
                       </div>
                       <div className="overflow-hidden">
-                        <h3 className="text-base md:text-lg font-bold text-white truncate">{album.title}</h3>
+                        <h3 className="text-base md:text-lg font-bold text-white truncate">{album.title || 'Untitled Album'}</h3>
                         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-zinc-400 mt-1">
                           <span className="flex items-center gap-1 shrink-0">
-                            <Calendar className="w-3.5 h-3.5 text-zinc-500" /> {album.date}
+                            <Calendar className="w-3.5 h-3.5 text-zinc-500" /> {album.date || '-'}
                           </span>
                           <span className="flex items-center gap-1 shrink-0">
-                            <ImageIcon className="w-3.5 h-3.5 text-zinc-500" /> {album.totalPhotos} photos
+                            <ImageIcon className="w-3.5 h-3.5 text-zinc-500" /> {album.totalPhotos || 0} photos
                           </span>
                           <span className="bg-zinc-800 text-zinc-300 px-2 py-0.5 rounded text-[10px] font-medium shrink-0">
-                            RM {album.pricePerPhoto}/photo
+                            RM {price}/photo
                           </span>
                         </div>
                       </div>
@@ -216,7 +275,7 @@ export default function SalesReportPage() {
                         <Eye className="w-3.5 h-3.5 text-amber-500 shrink-0" /> Views
                       </p>
                       <div className="mt-2">
-                        <p className="text-base md:text-lg font-bold text-white">{album.views.toLocaleString()}</p>
+                        <p className="text-base md:text-lg font-bold text-white">{(album.views || 0).toLocaleString()}</p>
                         <p className="text-[10px] text-zinc-500 truncate">Album visitors</p>
                       </div>
                     </div>
@@ -229,7 +288,7 @@ export default function SalesReportPage() {
                       <div className="mt-2">
                         <p className="text-base md:text-lg font-bold text-white">{totalSearchesAlbum.toLocaleString()}</p>
                         <p className="text-[10px] text-zinc-400 truncate mt-0.5">
-                          Bib: <span className="text-white font-medium">{album.bibSearches}</span> | Selfie: <span className="text-white font-medium">{album.selfieSearches}</span>
+                          Bib: <span className="text-white font-medium">{album.bibSearches || 0}</span> | Selfie: <span className="text-white font-medium">{album.selfieSearches || 0}</span>
                         </p>
                       </div>
                     </div>
@@ -240,9 +299,9 @@ export default function SalesReportPage() {
                         <ShoppingBag className="w-3.5 h-3.5 text-amber-500 shrink-0" /> Sold
                       </p>
                       <div className="mt-2">
-                        <p className="text-base md:text-lg font-bold text-white">{album.photosSold} <span className="text-xs text-zinc-500 font-normal">units</span></p>
+                        <p className="text-base md:text-lg font-bold text-white">{sold} <span className="text-xs text-zinc-500 font-normal">units</span></p>
                         <p className="text-[10px] text-zinc-500 truncate">
-                          {((album.photosSold / album.totalPhotos) * 100).toFixed(1)}% of album
+                          {((sold / totalPhotos) * 100).toFixed(1)}% of album
                         </p>
                       </div>
                     </div>
@@ -265,7 +324,7 @@ export default function SalesReportPage() {
                       </p>
                       <div className="mt-2">
                         <p className="text-base md:text-lg font-bold text-amber-500">RM {nettSales.toFixed(2)}</p>
-                        <p className="text-[10px] text-amber-400/70 truncate">After 10% commission</p>
+                        <p className="text-[10px] text-amber-400/70 truncate">After {feePercent}% commission</p>
                       </div>
                     </div>
 
