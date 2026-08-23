@@ -194,6 +194,7 @@ export default function PhotographerUpload() {
               event_id: selectedAlbum,
               original_url: originalUrlData.publicUrl,
               preview_url: previewUrlData.publicUrl,
+              watermark_url: previewUrlData.publicUrl, // Diisi untuk mengelakkan ralat NOT NULL
               price: 10.00,
               bib_numbers: []
             }
