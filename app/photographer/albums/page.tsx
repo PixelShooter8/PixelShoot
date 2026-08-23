@@ -74,8 +74,8 @@ export default function PhotographerAlbums() {
   }
 
   const copyToClipboard = (id: string) => {
-    // Menghala terus ke paparan public album (/public/album/[id])
-    const url = `${window.location.origin}/public/album/${id}`
+    // Menghala terus ke paparan public album (/album/[id])
+    const url = `${window.location.origin}/album/${id}`
     navigator.clipboard.writeText(url)
     alert('Public event link copied to clipboard!')
   }
@@ -164,7 +164,7 @@ export default function PhotographerAlbums() {
 
                   <div style={{ background: '#1a1a1a', padding: '8px 12px', borderRadius: '6px', marginBottom: '20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <span style={{ fontSize: '11px', color: '#aaa', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '180px' }}>
-                      {typeof window !== 'undefined' ? `${window.location.origin}/public/album/${album.id}` : `/public/album/${album.id}`}
+                      {typeof window !== 'undefined' ? `${window.location.origin}/album/${album.id}` : `/album/${album.id}`}
                     </span>
                     <button onClick={() => copyToClipboard(album.id)} style={{ background: '#333', color: '#fff', border: 'none', padding: '4px 8px', borderRadius: '4px', fontSize: '10px', cursor: 'pointer', fontWeight: 'bold' }}>
                       Copy Link

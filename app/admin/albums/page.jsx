@@ -91,8 +91,8 @@ export default function AdminAlbumsPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {albums.map((album) => {
-            // URL PUBLIC untuk orang awam/peserta (menghala ke app/public/album/[id])
-            const publicEventUrl = typeof window !== 'undefined' ? `${window.location.origin}/public/album/${album.id}` : '';
+            // URL PUBLIC menghala ke app/album/[id]
+            const publicEventUrl = typeof window !== 'undefined' ? `${window.location.origin}/album/${album.id}` : '';
             const isCopied = copiedId === album.id;
             const isPublished = album.status?.toLowerCase() === 'published' || album.is_published;
 
