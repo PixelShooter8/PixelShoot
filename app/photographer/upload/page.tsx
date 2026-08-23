@@ -136,6 +136,20 @@ export default function PhotographerUpload() {
       return
     }
 
+    // Ambil harga sebenar daripada jadual 'events' berdasarkan album yang dipilih
+    const { data: albumData, error: albumError } = await supabase
+      .from('events')
+      .select('price')
+      .eq('id', selectedAlbum)
+      .single()
+
+    if (albumError) {
+      alert('Gagal mendapatkan maklumat harga album.')
+      return
+    }
+
+    const albumPrice = albumData?.price ?? 10.00
+
     // Ambil sesi terkini untuk pastikan token auth disertakan
     const { data: { session } } = await supabase.auth.getSession()
     const token = session?.access_token
@@ -186,7 +200,7 @@ export default function PhotographerUpload() {
           .from('photo-preview')
           .getPublicUrl(previewFilePath)
 
-        // 3. Simpan maklumat ke dalam jadual 'photos'
+        // 3. Simpan maklumat ke dalam jadual 'photos' dengan harga mengikut album
         const { error: dbError } = await supabase
           .from('photos')
           .insert([
@@ -194,8 +208,8 @@ export default function PhotographerUpload() {
               event_id: selectedAlbum,
               original_url: originalUrlData.publicUrl,
               preview_url: previewUrlData.publicUrl,
-              watermark_url: previewUrlData.publicUrl, // Diisi untuk mengelakkan ralat NOT NULL
-              price: 10.00,
+              watermark_url: previewUrlData.publicUrl,
+              price: albumPrice, // Harga mengikut tetapan album
               bib_numbers: []
             }
           ])
