@@ -62,6 +62,7 @@ function GalleryContent({ albumId }: { albumId: string }) {
 
   useEffect(() => {
     async function fetchAlbumAndPhotos() {
+      if (!albumId) return;
       try {
         const { data: albumData } = await supabase
           .from('events')
@@ -84,10 +85,8 @@ function GalleryContent({ albumId }: { albumId: string }) {
 
         if (photoData && photoData.length > 0) {
           const formattedPhotos = photoData.map((p: any) => {
-            // Gunakan terus URL penuh dari database (watermark_url atau original_url)
             const finalUrl = p.watermark_url || p.original_url || p.image_url || p.url || '';
 
-            // Tangani kolum bib_numbers (jenis array) atau bib
             let bibValue = '0000';
             if (p.bib_numbers && Array.isArray(p.bib_numbers) && p.bib_numbers.length > 0) {
               bibValue = p.bib_numbers.join(', ');
@@ -163,11 +162,11 @@ function GalleryContent({ albumId }: { albumId: string }) {
   }
 
   const handleCheckout = () => {
-  const selectedItems = photos.filter(p => selectedPhotos.includes(p.id));
-  // Pastikan ia di-stringify dengan betul
-  const photosParam = encodeURIComponent(JSON.stringify(selectedItems));
-  window.location.href = `/checkout?album=${albumId}&total=${totalPrice}&photos=${photosParam}`;
-};
+    const selectedItems = photos.filter(p => selectedPhotos.includes(p.id));
+    const photosParam = encodeURIComponent(JSON.stringify(selectedItems));
+    window.location.href = `/checkout?album=${albumId}&total=${totalPrice}&photos=${photosParam}`;
+  };
+
   return (
     <div className="min-h-screen bg-black text-white selection:bg-amber-500 selection:text-black">
       <header className="sticky top-0 z-50 bg-black/80 backdrop-blur-md border-b border-zinc-900">
@@ -201,7 +200,7 @@ function GalleryContent({ albumId }: { albumId: string }) {
               <Sparkles className="w-3 h-3" /> Event Gallery ({photos.length} Photos)
             </div>
             <h1 className="text-2xl sm:text-4xl font-black text-white uppercase tracking-wide">
-              {album ? album.title : albumId.replace(/-/g, ' ')}
+              {album ? album.title : 'Loading Album...'}
             </h1>
             <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-400 pt-1">
               {album?.event_date && <span className="flex items-center gap-1.5 mr-2"><Calendar className="w-3.5 h-3.5" /> {album.event_date}</span>}
@@ -289,7 +288,7 @@ function GalleryContent({ albumId }: { albumId: string }) {
 
 export default function AlbumGalleryPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
-  const albumId = resolvedParams?.id || 'maraton-kuching-2026';
+  const albumId = resolvedParams?.id;
 
   return (
     <Suspense fallback={<div className="min-h-screen bg-black text-white flex items-center justify-center">Loading Gallery...</div>}>
