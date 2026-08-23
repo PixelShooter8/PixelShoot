@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, use } from 'react'
 import Sidebar from '@/components/Sidebar'
 import { createClient } from '@supabase/supabase-js'
 
@@ -9,9 +9,6 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
 )
 
-// Simulasi user yang sedang login (Jurufoto A)
-const CURRENT_USER_ID = 'Jurufoto A'
-
 interface PhotoItem {
   id: string
   preview_url: string
@@ -19,38 +16,46 @@ interface PhotoItem {
   created_at: string
 }
 
-export default function AlbumDetail({ params }: { params: { id: string } }) {
+export default function AlbumDetail({ params }: { params: Promise<{ id: string }> | { id: string } }) {
+  // Tangani params sama ada sebagai Promise atau objek biasa (bergantung pada versi Next.js)
+  const resolvedParams = 'then' in params ? use(params) : params
+  const albumId = resolvedParams.id
+
   const [photos, setPhotos] = useState<PhotoItem[]>([])
   const [loading, setLoading] = useState(true)
   const [albumTitle, setAlbumTitle] = useState('')
 
   useEffect(() => {
-    fetchAlbumDetailsAndPhotos()
-  }, [params.id])
+    if (albumId && albumId !== 'undefined') {
+      fetchAlbumDetailsAndPhotos(albumId)
+    }
+  }, [albumId])
 
-  async function fetchAlbumDetailsAndPhotos() {
+  async function fetchAlbumDetailsAndPhotos(id: string) {
     setLoading(true)
 
     // 1. Ambil tajuk album
-    const { data: eventData } = await supabase
+    const { data: eventData, error: eventError } = await supabase
       .from('events')
       .select('title')
-      .eq('id', params.id)
+      .eq('id', id)
       .single()
 
     if (eventData) {
       setAlbumTitle(eventData.title)
+    } else {
+      console.error('Ralat event:', eventError?.message)
     }
 
-    // 2. Ambil senarai gambar daripada jadual 'photos' untuk event ini
-    const { data: photosData, error } = await supabase
+    // 2. Ambil senarai gambar daripada jadual 'photos'
+    const { data: photosData, error: photosError } = await supabase
       .from('photos')
       .select('*')
-      .eq('event_id', params.id)
+      .eq('event_id', id)
       .order('created_at', { ascending: false })
 
-    if (error) {
-      console.error('Ralat mengambil gambar:', error.message)
+    if (photosError) {
+      console.error('Ralat mengambil gambar:', photosError.message)
     } else {
       setPhotos(photosData || [])
     }
@@ -58,7 +63,7 @@ export default function AlbumDetail({ params }: { params: { id: string } }) {
     setLoading(false)
   }
 
-  // Fungsi padam gambar dari database & storage
+  // Fungsi padam gambar
   const handleDelete = async (photoId: string) => {
     if (confirm('Adakah anda pasti mahu memadam gambar ini?')) {
       const { error } = await supabase
@@ -83,7 +88,7 @@ export default function AlbumDetail({ params }: { params: { id: string } }) {
         <div style={{ marginBottom: '30px' }}>
           <a href="/photographer/albums" style={{ color: '#888', textDecoration: 'none', fontSize: '12px' }}>← Back to Albums</a>
           <h1 style={{ marginTop: '10px', fontSize: '28px', fontWeight: 'bold' }}>
-            Gallery: {albumTitle || `Album ${params.id}`}
+            Gallery: {albumTitle || `Album ID: ${albumId}`}
           </h1>
           <p style={{ color: '#888', fontSize: '14px' }}>Jumlah gambar dalam album: {photos.length}</p>
         </div>
