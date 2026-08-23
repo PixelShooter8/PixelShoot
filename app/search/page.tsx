@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Search, Camera, Loader2, Image as ImageIcon, Sparkles } from 'lucide-react';
+import { Search, Camera, Loader2, Image as ImageIcon, Sparkles, Eye, X } from 'lucide-react';
 
 export default function SearchPage() {
   const [activeTab, setActiveTab] = useState<'bib' | 'selfie'>('bib');
@@ -17,6 +17,9 @@ export default function SearchPage() {
   const [loading, setLoading] = useState(false);
   const [photos, setPhotos] = useState<any[]>([]);
   const [searched, setSearched] = useState(false);
+
+  // State untuk Modal Zoom / Lightbox
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   // Handle Gambar Selfie Preview
   const handleSelfieChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -202,17 +205,25 @@ export default function SearchPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
               {photos.map((photo) => (
                 <div key={photo.id} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden group">
-                  <div className="relative aspect-[4/3]">
+                  <div className="relative aspect-[4/3] cursor-pointer" onClick={() => setSelectedImage(photo.original_url || photo.watermark_url)}>
                     <img
                       src={photo.watermark_url}
                       alt="Event Photo"
                       className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
                     />
+                    {/* Butang Zum / View Interaktif */}
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 text-white font-medium text-xs">
+                      <Eye className="w-5 h-5 text-amber-400" />
+                      <span>Zum / Preview</span>
+                    </div>
                   </div>
                   <div className="p-4 flex items-center justify-between">
                     <div>
                       <p className="text-xs text-gray-400">Harga</p>
-                      <p className="text-lg font-bold text-blue-600">RM {photo.price}</p>
+                      {/* Harga Dinamik Mengikut Database */}
+                      <p className="text-lg font-bold text-blue-600">
+                        RM {photo.price ? Number(photo.price).toFixed(2) : '20.00'}
+                      </p>
                     </div>
                     <button className="bg-gray-900 text-white text-xs font-semibold px-4 py-2 rounded-lg hover:bg-blue-600 transition">
                       Beli Gambar
@@ -223,6 +234,26 @@ export default function SearchPage() {
             </div>
           </div>
         )}
+
+        {/* MODAL ZOOM / LIGHTBOX UNTUK PAPAR GAMBAR BESAR */}
+        {selectedImage && (
+          <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
+            <div className="relative max-w-4xl w-full max-h-[90vh] flex flex-col items-center">
+              <button 
+                onClick={() => setSelectedImage(null)}
+                className="absolute -top-10 right-0 text-white hover:text-gray-300 bg-zinc-800 p-2 rounded-full transition"
+              >
+                <X className="w-6 h-6" />
+              </button>
+              <img 
+                src={selectedImage} 
+                alt="Zoomed Preview" 
+                className="max-w-full max-h-[80vh] object-contain rounded-lg shadow-2xl"
+              />
+            </div>
+          </div>
+        )}
+
       </div>
     </div>
   );
