@@ -51,7 +51,7 @@ function GalleryContent({ albumId }: { albumId: string }) {
   const searchParams = useSearchParams();
   const bibFromUrl = searchParams.get('bib') || '';
   
-  const [searchBib, setSearchBib] = useState(bibFromUrl);
+  const [searchBib, setSearchBib] = useState<string>(bibFromUrl);
   const [selectedPhotos, setSelectedPhotos] = useState<string[]>([]);
   const [album, setAlbum] = useState<AlbumDetails | null>(null);
   const [photos, setPhotos] = useState<PhotoItem[]>([]);
@@ -80,9 +80,8 @@ function GalleryContent({ albumId }: { albumId: string }) {
           setAlbum(albumData);
         }
 
-        const defaultAlbumPrice = albumData?.price ?? 16;
+        const defaultAlbumPrice = albumData?.price ?? 20.00;
 
-        // Ambil data dari table photos
         const { data: photoData } = await supabase
           .from('photos')
           .select('*')
@@ -90,7 +89,7 @@ function GalleryContent({ albumId }: { albumId: string }) {
           .order('created_at', { ascending: false });
 
         if (photoData && photoData.length > 0) {
-          const formattedPhotos = photoData.map((p: any) => {
+          const formattedPhotos: PhotoItem[] = photoData.map((p: any) => {
             const finalUrl = p.watermark_url || p.original_url || p.image_url || p.url || '';
             const originalFullUrl = p.original_url || p.watermark_url || finalUrl;
 
@@ -139,9 +138,9 @@ function GalleryContent({ albumId }: { albumId: string }) {
   };
 
   const packagesList: PackageTier[] = album?.packages || album?.bundle_options || album?.pricing_tiers || [
-    { quantity: 1, price: album?.price ?? 16 },
-    { quantity: 3, price: 40 },
-    { quantity: 5, price: 85 }
+    { quantity: 1, price: album?.price ?? 20 },
+    { quantity: 3, price: 50 },
+    { quantity: 5, price: 80 }
   ];
 
   const totalSelectedCount = selectedPhotos.length;
@@ -164,7 +163,7 @@ function GalleryContent({ albumId }: { albumId: string }) {
         remainingCount %= q;
       }
     }
-    const singleUnitPrice = album?.price ?? 16;
+    const singleUnitPrice = album?.price ?? 20;
     calculatedSum += remainingCount * singleUnitPrice;
     totalPrice = totalSelectedCount > 0 ? calculatedSum : 0;
   }
@@ -256,7 +255,6 @@ function GalleryContent({ albumId }: { albumId: string }) {
                     isSelected ? 'border-amber-500 ring-2 ring-amber-500/50 scale-[1.02]' : 'border-zinc-900 hover:border-zinc-700'
                   }`}
                 >
-                  {/* Bahagian Gambar */}
                   <div className="relative aspect-[4/3] bg-zinc-900 overflow-hidden select-none flex items-center justify-center">
                     <img 
                       src={photo.url} 
@@ -269,10 +267,10 @@ function GalleryContent({ albumId }: { albumId: string }) {
                     <button
                       type="button"
                       onClick={(e) => {
-                        e.stopPropagation(); // Elak dari terpilih (select) gambar bila klik butang mata
+                        e.stopPropagation();
                         setZoomedImage(photo.original_url || photo.url);
                       }}
-                      className="absolute bottom-14 right-3 bg-black/70 hover:bg-black text-white p-2 rounded-full transition opacity-0 group-hover:opacity-100 flex items-center justify-center shadow border border-white/20 z-10"
+                      className="absolute bottom-14 right-3 bg-black/70 hover:bg-black text-white p-2 rounded-full transition opacity-0 group-hover:opacity-100 flex items-center justify-center shadow border border-white/20 z-10 cursor-pointer"
                       title="Zoom / View Image"
                     >
                       <Eye className="w-4 h-4 text-amber-400" />
@@ -296,7 +294,6 @@ function GalleryContent({ albumId }: { albumId: string }) {
                     </span>
                   </div>
 
-                  {/* Bahagian Harga & Status Klik */}
                   <div 
                     onClick={() => toggleSelectPhoto(photo.id)}
                     className="p-3 bg-zinc-950 flex items-center justify-between border-t border-zinc-950 cursor-pointer"
@@ -319,7 +316,7 @@ function GalleryContent({ albumId }: { albumId: string }) {
           <div className="relative max-w-4xl w-full max-h-[90vh] flex flex-col items-center">
             <button
               onClick={() => setZoomedImage(null)}
-              className="absolute -top-10 right-0 text-white bg-zinc-800 hover:bg-zinc-700 p-2 rounded-full transition flex items-center justify-center shadow"
+              className="absolute -top-10 right-0 text-white bg-zinc-800 hover:bg-zinc-700 p-2 rounded-full transition flex items-center justify-center shadow cursor-pointer"
               title="Close"
             >
               <X className="w-5 h-5" />
@@ -338,7 +335,7 @@ function GalleryContent({ albumId }: { albumId: string }) {
 
 export default function AlbumGalleryPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
-  const albumId = resolvedParams?.id;
+  const albumId = resolvedParams?.id ?? '';
 
   return (
     <Suspense fallback={<div className="min-h-screen bg-black text-white flex items-center justify-center">Loading Gallery...</div>}>
