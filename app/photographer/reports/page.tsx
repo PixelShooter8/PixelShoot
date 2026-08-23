@@ -21,60 +21,23 @@ export default function PhotographerReports() {
   const platformCommissionRate = getCommissionRate(photographerPlan)
   const paymentGatewayFeeRate = 0.03 // Caj Payment Gateway 3%
 
+  // Ditetapkan kosong untuk akaun baharu / belum ada jualan
   const [salesData] = useState({
-    history: [
-      { 
-        id: '1', 
-        event: 'Sarawak Marathon 2026', 
-        photosSold: 90, 
-        grossEarnings: 720.00, 
-        date: '10 July 2026',
-        items: [
-          { 
-            id: '101', 
-            fileName: 'IMG_9021.jpg', 
-            customerName: 'Ali bin Ahmad', 
-            contact: 'ali@gmail.com / 012-3456789', 
-            paymentMethod: 'FPX Online Banking', 
-            price: 8.00 
-          },
-          { 
-            id: '102', 
-            fileName: 'IMG_9022.jpg', 
-            customerName: 'Siti Sarah', 
-            contact: 'siti@yahoo.com / 019-8765432', 
-            paymentMethod: 'Credit / Debit Card', 
-            price: 8.00 
-          },
-        ]
-      },
-      { 
-        id: '2', 
-        event: 'Kuching Night Run 2026', 
-        photosSold: 65, 
-        grossEarnings: 520.00, 
-        date: '16 August 2026',
-        items: [
-          { 
-            id: '201', 
-            fileName: 'RUN_123.jpg', 
-            customerName: 'John Doe', 
-            contact: 'john@gmail.com / 011-22334455', 
-            paymentMethod: 'DuitNow QR', 
-            price: 8.00 
-          },
-        ]
-      },
-    ]
+    history: []
   })
 
-  const totalGross = salesData.history.reduce((acc, item) => acc + item.grossEarnings, 0)
+  const totalGross = salesData.history.reduce((acc, item: any) => acc + item.grossEarnings, 0)
   const totalFee = totalGross * platformCommissionRate
   const totalNet = totalGross - totalFee
-  const totalPhotos = salesData.history.reduce((acc, item) => acc + item.photosSold, 0)
+  const totalPhotos = salesData.history.reduce((acc, item: any) => acc + item.photosSold, 0)
 
   // FUNGSI DOWNLOAD PDF KESELURUHAN (HEADER BUTTON)
   const downloadReportPDF = () => {
+    if (salesData.history.length === 0) {
+      alert('Tiada data jualan untuk dimuat turun.');
+      return;
+    }
+
     const doc = new jsPDF()
     
     doc.setFontSize(18)
@@ -83,7 +46,7 @@ export default function PhotographerReports() {
     doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 30)
     
     const tableColumn = ["Event", "Date", "Photos Sold", "Gross (RM)", "Nett (RM)"]
-    const tableRows = salesData.history.map(item => [
+    const tableRows = salesData.history.map((item: any) => [
       item.event,
       item.date,
       item.photosSold.toString(),
@@ -113,7 +76,6 @@ export default function PhotographerReports() {
     doc.setFontSize(11)
     doc.text(`Date: ${eventItem.date}`, 14, 27)
 
-    // Senarai item / gambar yang terjual dalam event ini
     const tableColumn = ["File Name", "Customer", "Payment Method", "Price (RM)"]
     const tableRows = eventItem.items.map((sub: any) => [
       sub.fileName,
@@ -128,7 +90,6 @@ export default function PhotographerReports() {
       startY: 35,
     })
 
-    // Bahagian Ringkasan Kewangan di bawah jadual
     const finalY = (doc as any).lastAutoTable.finalY + 10
     
     doc.setFontSize(12)
@@ -139,7 +100,7 @@ export default function PhotographerReports() {
     doc.text(`• Payment Gateway Fee (3%): RM ${gatewayFee.toFixed(2)}`, 14, finalY + 21)
     
     doc.setFontSize(12)
-    doc.setTextColor(74, 222, 128) // Warna hijau untuk nett
+    doc.setTextColor(74, 222, 128)
     doc.text(`• Nett Earnings: RM ${nett.toFixed(2)}`, 14, finalY + 31)
 
     doc.save(`Report_${eventItem.event.replace(/\s+/g, '_')}.pdf`)
@@ -224,118 +185,124 @@ export default function PhotographerReports() {
             <span style={{ fontSize: '12px', color: '#888' }}>Click on an event to view transaction details & download report</span>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
-            {salesData.history.map((item, index) => {
-              const itemFee = item.grossEarnings * platformCommissionRate
-              const itemNet = item.grossEarnings - itemFee
-              const isExpanded = expandedEventId === item.id
+          {salesData.history.length === 0 ? (
+            <div style={{ padding: '40px 24px', textAlign: 'center', color: '#666' }}>
+              <p style={{ fontSize: '14px', margin: '0 0 4px 0', color: '#888' }}>Tiada rekod jualan event buat masa ini</p>
+              <p style={{ fontSize: '12px', margin: 0 }}>Senarai jualan foto akan dipaparkan di sini setelah pelanggan mula membeli foto anda.</p>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              {salesData.history.map((item: any, index: number) => {
+                const itemFee = item.grossEarnings * platformCommissionRate
+                const itemNet = item.grossEarnings - itemFee
+                const isExpanded = expandedEventId === item.id
 
-              return (
-                <div key={item.id} style={{ borderBottom: index !== salesData.history.length - 1 ? '1px solid #1a1a1a' : 'none' }}>
-                  
-                  {/* Event Main Row */}
-                  <div 
-                    onClick={() => toggleEventExpand(item.id)}
-                    style={{ 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      justifyContent: 'space-between', 
-                      padding: '16px 24px',
-                      cursor: 'pointer',
-                      background: isExpanded ? '#161616' : 'transparent',
-                      transition: 'background 0.2s'
-                    }}
-                  >
-                    <div>
-                      <p style={{ fontSize: '14px', fontWeight: 'bold', margin: '0 0 4px 0', color: '#fff' }}>
-                        {item.event} {isExpanded ? '▲' : '▼'}
-                      </p>
-                      <p style={{ fontSize: '12px', color: '#888', margin: 0 }}>
-                        📅 {item.date} &nbsp;|&nbsp; 📸 {item.photosSold} photos sold
-                      </p>
-                    </div>
+                return (
+                  <div key={item.id} style={{ borderBottom: index !== salesData.history.length - 1 ? '1px solid #1a1a1a' : 'none' }}>
                     
-                    <div style={{ textAlign: 'right' }}>
-                      <p style={{ fontSize: '14px', fontWeight: 'bold', margin: '0 0 4px 0', color: '#4ade80' }}>
-                        Nett: RM {itemNet.toFixed(2)}
-                      </p>
-                      <p style={{ fontSize: '12px', color: '#888', margin: 0 }}>
-                        Gross: RM {item.grossEarnings.toFixed(2)}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Expanded Transaction Details */}
-                  {isExpanded && (
-                    <div style={{ background: '#141414', padding: '16px 24px', borderTop: '1px solid #222' }}>
-                      
-                      {/* Butang Download PDF khusus untuk event ini */}
-                      <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'flex-end' }}>
-                        <button
-                          onClick={() => downloadEventPDF(item)}
-                          style={{
-                            background: '#3b82f6',
-                            color: '#fff',
-                            border: 'none',
-                            padding: '8px 14px',
-                            borderRadius: '6px',
-                            fontSize: '12px',
-                            fontWeight: 'bold',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '6px'
-                          }}
-                        >
-                          📄 Download This Event Report (PDF)
-                        </button>
+                    {/* Event Main Row */}
+                    <div 
+                      onClick={() => toggleEventExpand(item.id)}
+                      style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'space-between', 
+                        padding: '16px 24px',
+                        cursor: 'pointer',
+                        background: isExpanded ? '#161616' : 'transparent',
+                        transition: 'background 0.2s'
+                      }}
+                    >
+                      <div>
+                        <p style={{ fontSize: '14px', fontWeight: 'bold', margin: '0 0 4px 0', color: '#fff' }}>
+                          {item.event} {isExpanded ? '▲' : '▼'}
+                        </p>
+                        <p style={{ fontSize: '12px', color: '#888', margin: 0 }}>
+                          📅 {item.date} &nbsp;|&nbsp; 📸 {item.photosSold} photos sold
+                        </p>
                       </div>
-
-                      <p style={{ fontSize: '12px', fontWeight: 'bold', color: '#facc15', margin: '0 0 12px 0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                        Transaction & Customer Details:
-                      </p>
                       
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                        {item.items && item.items.length > 0 ? (
-                          item.items.map((subItem) => (
-                            <div key={subItem.id} style={{ 
-                              display: 'flex', 
-                              justifyContent: 'space-between', 
+                      <div style={{ textAlign: 'right' }}>
+                        <p style={{ fontSize: '14px', fontWeight: 'bold', margin: '0 0 4px 0', color: '#4ade80' }}>
+                          Nett: RM {itemNet.toFixed(2)}
+                        </p>
+                        <p style={{ fontSize: '12px', color: '#888', margin: 0 }}>
+                          Gross: RM {item.grossEarnings.toFixed(2)}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Expanded Transaction Details */}
+                    {isExpanded && (
+                      <div style={{ background: '#141414', padding: '16px 24px', borderTop: '1px solid #222' }}>
+                        
+                        <div style={{ marginBottom: '16px', display: 'flex', justifyContent: 'flex-end' }}>
+                          <button
+                            onClick={() => downloadEventPDF(item)}
+                            style={{
+                              background: '#3b82f6',
+                              color: '#fff',
+                              border: 'none',
+                              padding: '8px 14px',
+                              borderRadius: '6px',
+                              fontSize: '12px',
+                              fontWeight: 'bold',
+                              cursor: 'pointer',
+                              display: 'flex',
                               alignItems: 'center',
-                              background: '#1a1a1a', 
-                              padding: '12px 16px', 
-                              borderRadius: '8px',
-                              border: '1px solid #222'
-                            }}>
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                <span style={{ color: '#fff', fontSize: '13px', fontWeight: 'bold' }}>
-                                  📄 File: {subItem.fileName}
-                                </span>
-                                <span style={{ color: '#ccc', fontSize: '12px' }}>
-                                  👤 Buyer: {subItem.customerName} &nbsp;|&nbsp; 📞/✉️ {subItem.contact}
-                                </span>
-                                <span style={{ color: '#888', fontSize: '11px' }}>
-                                  💳 Payment Method: <span style={{ color: '#60a5fa' }}>{subItem.paymentMethod}</span>
-                                </span>
-                              </div>
-                              <div style={{ textAlign: 'right' }}>
-                                <span style={{ color: '#4ade80', fontWeight: 'bold', fontSize: '14px' }}>
-                                  RM {subItem.price.toFixed(2)}
-                                </span>
-                              </div>
-                            </div>
-                          ))
-                        ) : (
-                          <p style={{ fontSize: '12px', color: '#888', margin: 0 }}>No detailed records available for this event.</p>
-                        )}
-                      </div>
-                    </div>
-                  )}
+                              gap: '6px'
+                            }}
+                          >
+                            📄 Download This Event Report (PDF)
+                          </button>
+                        </div>
 
-                </div>
-              )
-            })}
-          </div>
+                        <p style={{ fontSize: '12px', fontWeight: 'bold', color: '#facc15', margin: '0 0 12px 0', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                          Transaction & Customer Details:
+                        </p>
+                        
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                          {item.items && item.items.length > 0 ? (
+                            item.items.map((subItem: any) => (
+                              <div key={subItem.id} style={{ 
+                                display: 'flex', 
+                                justifyContent: 'space-between', 
+                                alignItems: 'center',
+                                background: '#1a1a1a', 
+                                padding: '12px 16px', 
+                                borderRadius: '8px',
+                                border: '1px solid #222'
+                              }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                  <span style={{ color: '#fff', fontSize: '13px', fontWeight: 'bold' }}>
+                                    📄 File: {subItem.fileName}
+                                  </span>
+                                  <span style={{ color: '#ccc', fontSize: '12px' }}>
+                                    👤 Buyer: {subItem.customerName} &nbsp;|&nbsp; 📞/✉️ {subItem.contact}
+                                  </span>
+                                  <span style={{ color: '#888', fontSize: '11px' }}>
+                                    💳 Payment Method: <span style={{ color: '#60a5fa' }}>{subItem.paymentMethod}</span>
+                                  </span>
+                                </div>
+                                <div style={{ textAlign: 'right' }}>
+                                  <span style={{ color: '#4ade80', fontWeight: 'bold', fontSize: '14px' }}>
+                                    RM {subItem.price.toFixed(2)}
+                                  </span>
+                                </div>
+                              </div>
+                            ))
+                          ) : (
+                            <p style={{ fontSize: '12px', color: '#888', margin: 0 }}>No detailed records available for this event.</p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </div>
 
       </div>
