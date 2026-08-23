@@ -13,7 +13,9 @@ import {
   Filter,
   Calendar,
   MapPin,
-  Tag
+  Tag,
+  Eye,
+  X
 } from 'lucide-react';
 
 const supabase = createClient(
@@ -42,6 +44,7 @@ interface PhotoItem {
   bib: string;
   price: number;
   url: string;
+  original_url?: string;
 }
 
 function GalleryContent({ albumId }: { albumId: string }) {
@@ -53,6 +56,9 @@ function GalleryContent({ albumId }: { albumId: string }) {
   const [album, setAlbum] = useState<AlbumDetails | null>(null);
   const [photos, setPhotos] = useState<PhotoItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  
+  // State untuk modal zum / view gambar besar
+  const [zoomedImage, setZoomedImage] = useState<string | null>(null);
 
   useEffect(() => {
     if (bibFromUrl) {
@@ -74,7 +80,7 @@ function GalleryContent({ albumId }: { albumId: string }) {
           setAlbum(albumData);
         }
 
-        const singlePhotoPrice = albumData?.price ?? 16;
+        const defaultAlbumPrice = albumData?.price ?? 16;
 
         // Ambil data dari table photos
         const { data: photoData } = await supabase
@@ -86,6 +92,7 @@ function GalleryContent({ albumId }: { albumId: string }) {
         if (photoData && photoData.length > 0) {
           const formattedPhotos = photoData.map((p: any) => {
             const finalUrl = p.watermark_url || p.original_url || p.image_url || p.url || '';
+            const originalFullUrl = p.original_url || p.watermark_url || finalUrl;
 
             let bibValue = '0000';
             if (p.bib_numbers && Array.isArray(p.bib_numbers) && p.bib_numbers.length > 0) {
@@ -99,8 +106,9 @@ function GalleryContent({ albumId }: { albumId: string }) {
             return {
               id: p.id,
               bib: bibValue,
-              price: p.price ?? singlePhotoPrice,
-              url: finalUrl
+              price: p.price ?? defaultAlbumPrice,
+              url: finalUrl,
+              original_url: originalFullUrl
             };
           });
 
@@ -244,34 +252,56 @@ function GalleryContent({ albumId }: { albumId: string }) {
               return (
                 <div 
                   key={photo.id} 
-                  onClick={() => toggleSelectPhoto(photo.id)} 
-                  className={`group relative rounded-2xl overflow-hidden cursor-pointer border transition-all ${
+                  className={`group relative rounded-2xl overflow-hidden border transition-all bg-zinc-900 ${
                     isSelected ? 'border-amber-500 ring-2 ring-amber-500/50 scale-[1.02]' : 'border-zinc-900 hover:border-zinc-700'
                   }`}
                 >
+                  {/* Bahagian Gambar */}
                   <div className="relative aspect-[4/3] bg-zinc-900 overflow-hidden select-none flex items-center justify-center">
                     <img 
                       src={photo.url} 
                       alt={`BIB ${photo.bib}`} 
-                      className="w-full h-full object-cover pointer-events-none" 
+                      className="w-full h-full object-cover cursor-pointer"
+                      onClick={() => toggleSelectPhoto(photo.id)} 
                     />
+                    
+                    {/* BUTANG ZOOM / VIEW GAMBAR BESAR */}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation(); // Elak dari terpilih (select) gambar bila klik butang mata
+                        setZoomedImage(photo.original_url || photo.url);
+                      }}
+                      className="absolute bottom-14 right-3 bg-black/70 hover:bg-black text-white p-2 rounded-full transition opacity-0 group-hover:opacity-100 flex items-center justify-center shadow border border-white/20 z-10"
+                      title="Zoom / View Image"
+                    >
+                      <Eye className="w-4 h-4 text-amber-400" />
+                    </button>
+
                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-40 group-hover:opacity-60 transition-opacity">
                       <p className="text-white/40 text-xl font-black uppercase tracking-widest -rotate-45">WATERMARK</p>
                     </div>
                     
-                    <div className={`absolute top-3 right-3 w-7 h-7 rounded-lg flex items-center justify-center transition ${
-                      isSelected ? 'bg-amber-500 text-black' : 'bg-black/60 border border-white/20 text-transparent'
-                    }`}>
+                    <div 
+                      onClick={() => toggleSelectPhoto(photo.id)}
+                      className={`absolute top-3 right-3 w-7 h-7 rounded-lg flex items-center justify-center transition cursor-pointer ${
+                        isSelected ? 'bg-amber-500 text-black' : 'bg-black/60 border border-white/20 text-transparent'
+                      }`}
+                    >
                       <Check className="w-4 h-4 stroke-[3]" />
                     </div>
 
-                    <span className="absolute bottom-3 left-3 bg-black/80 backdrop-blur-md px-2.5 py-1 rounded-md text-[10px] font-bold text-amber-500 border border-zinc-800">
+                    <span className="absolute bottom-3 left-3 bg-black/80 backdrop-blur-md px-2.5 py-1 rounded-md text-[10px] font-bold text-amber-500 border border-zinc-800 pointer-events-none">
                       BIB #{photo.bib}
                     </span>
                   </div>
 
-                  <div className="p-3 bg-zinc-950 flex items-center justify-between border-t border-zinc-900">
-                    <span className="text-xs font-extrabold text-white">RM {photo.price}.00</span>
+                  {/* Bahagian Harga & Status Klik */}
+                  <div 
+                    onClick={() => toggleSelectPhoto(photo.id)}
+                    className="p-3 bg-zinc-950 flex items-center justify-between border-t border-zinc-950 cursor-pointer"
+                  >
+                    <span className="text-xs font-extrabold text-amber-400">RM {Number(photo.price).toFixed(2)}</span>
                     <span className={`text-[10px] font-bold uppercase ${isSelected ? 'text-amber-500' : 'text-zinc-500'}`}>
                       {isSelected ? 'Selected' : '+ Click to Select'}
                     </span>
@@ -282,6 +312,26 @@ function GalleryContent({ albumId }: { albumId: string }) {
           </div>
         )}
       </main>
+
+      {/* MODAL LIGHTBOX / ZOOM GAMBAR BESAR */}
+      {zoomedImage && (
+        <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4">
+          <div className="relative max-w-4xl w-full max-h-[90vh] flex flex-col items-center">
+            <button
+              onClick={() => setZoomedImage(null)}
+              className="absolute -top-10 right-0 text-white bg-zinc-800 hover:bg-zinc-700 p-2 rounded-full transition flex items-center justify-center shadow"
+              title="Close"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <img
+              src={zoomedImage}
+              alt="Zoomed Preview"
+              className="max-w-full max-h-[80vh] object-contain rounded-xl shadow-2xl border border-zinc-800"
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
