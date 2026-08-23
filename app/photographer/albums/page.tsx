@@ -73,10 +73,10 @@ export default function PhotographerAlbums() {
     }
   }
 
-  const copyToClipboard = (title: string) => {
-    const url = `https://pixelshooter.my/events/${title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
+  const copyToClipboard = (id: string) => {
+    const url = `${window.location.origin}/photographer/albums/${id}`
     navigator.clipboard.writeText(url)
-    alert('Official shared event link copied to clipboard!')
+    alert('Official shared album link copied to clipboard!')
   }
 
   return (
@@ -163,9 +163,9 @@ export default function PhotographerAlbums() {
 
                   <div style={{ background: '#1a1a1a', padding: '8px 12px', borderRadius: '6px', marginBottom: '20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <span style={{ fontSize: '11px', color: '#aaa', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '180px' }}>
-                      https://pixelshooter.my/events/{album.id}
+                      {typeof window !== 'undefined' ? `${window.location.origin}/photographer/albums/${album.id}` : `/photographer/albums/${album.id}`}
                     </span>
-                    <button onClick={() => copyToClipboard(album.title)} style={{ background: '#333', color: '#fff', border: 'none', padding: '4px 8px', borderRadius: '4px', fontSize: '10px', cursor: 'pointer', fontWeight: 'bold' }}>
+                    <button onClick={() => copyToClipboard(album.id)} style={{ background: '#333', color: '#fff', border: 'none', padding: '4px 8px', borderRadius: '4px', fontSize: '10px', cursor: 'pointer', fontWeight: 'bold' }}>
                       Copy Link
                     </button>
                   </div>

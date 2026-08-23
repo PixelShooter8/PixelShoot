@@ -93,9 +93,7 @@ export default function AdminAlbumsPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {albums.map((album) => {
-            // Diselaraskan menggunakan format /events/[slug] (jika tiada slug, guna id sebagai fallback)
-            const identifier = album.slug || album.id;
-            const albumUrl = typeof window !== 'undefined' ? `${window.location.origin}/events/${identifier}` : '';
+            const albumUrl = typeof window !== 'undefined' ? `${window.location.origin}/admin/albums/${album.id}` : '';
             const isCopied = copiedId === album.id;
             const isPublished = album.status?.toLowerCase() === 'published' || album.is_published;
 
@@ -126,7 +124,7 @@ export default function AdminAlbumsPage() {
                     </h3>
                     <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-zinc-400 mt-2">
                       <span className="flex items-center gap-1">
-                        <Calendar className="w-3.5 h-3.5 text-zinc-500" /> {album.event_date || 'Tarikh tidak ditetapkan'}
+                        <Calendar className="w-3.5 h-3.5 text-zinc-500" /> {album.event_date || album.date || 'Tarikh tidak ditetapkan'}
                       </span>
                       <span className="flex items-center gap-1">
                         <MapPin className="w-3.5 h-3.5 text-zinc-500" /> {album.location || 'No location'}
@@ -152,9 +150,7 @@ export default function AdminAlbumsPage() {
                 {/* Bahagian Bawah (Butang Tindakan) */}
                 <div className="grid grid-cols-2 gap-2 pt-2 border-t border-zinc-800/80">
                   <a
-                    href={`/events/${identifier}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                    href={`/admin/albums/${album.id}`}
                     className="bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-semibold py-2.5 rounded-xl flex items-center justify-center gap-1.5 transition text-center"
                   >
                     <ExternalLink className="w-3.5 h-3.5 text-amber-500" /> View Gallery
