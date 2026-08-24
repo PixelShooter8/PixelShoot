@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
@@ -34,15 +34,22 @@ export default function AlbumDetailPage() {
         setAlbum(albumData);
       }
 
-      // 2. Ambil gambar-gambar dalam album (jika ada table photos)
-      // Nota: Sesuaikan nama table jika table gambar anda berbeza (cth: 'photos')
+      // 2. Ambil gambar-gambar dalam album
       const { data: photosData, error: photosError } = await supabase
         .from('photos')
         .select('*')
         .eq('event_id', albumId);
 
       if (!photosError && photosData) {
-        setPhotos(photosData);
+        // Format pautan URL gambar dengan selamat menggunakan fallback pelbagai lajur
+        const formattedPhotos = photosData.map((p) => {
+          const finalUrl = p.watermark_url || p.original_url || p.image_url || p.url || '';
+          return {
+            ...p,
+            displayUrl: finalUrl
+          };
+        });
+        setPhotos(formattedPhotos);
       }
 
       setLoading(false);
@@ -58,11 +65,11 @@ export default function AlbumDetailPage() {
       {/* Butang Kembali ke Dashboard */}
       <div>
         <button
-          onClick={() => router.push('/admin')}
-          className="flex items-center gap-2 text-xs text-zinc-400 hover:text-white transition-colors bg-zinc-900 border border-zinc-800 px-3 py-2 rounded-xl"
+          onClick={() => router.push('/admin/albums')}
+          className="flex items-center gap-2 text-xs text-zinc-400 hover:text-white transition-colors bg-zinc-900 border border-zinc-800 px-3 py-2 rounded-xl cursor-pointer"
         >
           <ArrowLeft className="w-4 h-4" />
-          <span>Back to Dashboard</span>
+          <span>Back to Albums</span>
         </button>
       </div>
 
@@ -78,8 +85,8 @@ export default function AlbumDetailPage() {
         </div>
 
         <button
-          onClick={() => alert('Fungsian muat naik gambar boleh diselaraskan di sini.')}
-          className="flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-black font-semibold px-4 py-2.5 rounded-xl text-xs transition-colors"
+          onClick={() => router.push(`/admin/albums/upload?id=${albumId}`)}
+          className="flex items-center gap-2 bg-amber-500 hover:bg-amber-400 text-black font-semibold px-4 py-2.5 rounded-xl text-xs transition-colors cursor-pointer"
         >
           <Upload className="w-4 h-4" />
           <span>Upload Photos</span>
@@ -95,8 +102,21 @@ export default function AlbumDetailPage() {
         ) : photos.length > 0 ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
             {photos.map((photo) => (
-              <div key={photo.id} className="relative group bg-zinc-800 rounded-xl overflow-hidden border border-zinc-700 aspect-square">
-                <img src={photo.url} alt="Album photo" className="w-full h-full object-cover" />
+              <div key={photo.id} className="relative group bg-zinc-800 rounded-xl overflow-hidden border border-zinc-700 aspect-square flex items-center justify-center">
+                <img 
+                  src={photo.displayUrl} 
+                  alt={`BIB ${photo.bib || 'Photo'}`} 
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    e.currentTarget.onerror = null;
+                    e.currentTarget.src = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 24 24" fill="none" stroke="%2371717a" stroke-width="1.5"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>';
+                  }}
+                />
+                {photo.bib && (
+                  <span className="absolute bottom-2 left-2 bg-black/75 px-2 py-0.5 rounded text-[10px] font-bold text-amber-400">
+                    BIB #{photo.bib}
+                  </span>
+                )}
               </div>
             ))}
           </div>
