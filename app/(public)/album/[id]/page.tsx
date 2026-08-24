@@ -34,6 +34,7 @@ interface AlbumDetails {
   event_date?: string;
   location?: string;
   price?: number;
+  pricing_bundles?: PackageTier[]; // <-- Tambah baris ini di sini
   packages?: PackageTier[];
   bundle_options?: PackageTier[];
   pricing_tiers?: PackageTier[];
@@ -180,12 +181,19 @@ function GalleryContent({ albumId }: { albumId: string }) {
     }
   };
 
-  const packagesList: PackageTier[] = album?.packages || album?.bundle_options || album?.pricing_tiers || [
-    { quantity: 1, price: album?.price ?? 20 },
-    { quantity: 3, price: 50 },
-    { quantity: 5, price: 80 }
-  ];
-
+ // Menukar format data pricing_bundles dari Supabase (yang guna 'qty') kepada 'quantity'
+  const rawBundles = album?.pricing_bundles || album?.packages || album?.bundle_options || album?.pricing_tiers;
+  
+  const packagesList: PackageTier[] = Array.isArray(rawBundles) && rawBundles.length > 0
+    ? rawBundles.map((b: any) => ({
+        quantity: Number(b.quantity ?? b.qty ?? 1),
+        price: Number(b.price ?? 0)
+      }))
+    : [
+        { quantity: 1, price: album?.price ?? 16 },
+        { quantity: 3, price: 40 },
+        { quantity: 5, price: 65 }
+      ];
   const totalSelectedCount = selectedPhotos.length;
   let totalPrice = 0;
 
